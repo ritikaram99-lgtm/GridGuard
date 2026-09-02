@@ -1,5 +1,7 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.db.database import init_db
 from app.routes import (
     feeders_router,
     forecast_router,
@@ -15,10 +17,18 @@ from app.routes import (
 )
 from app.utils.config import get_cors_origins
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
+
+
 app = FastAPI(
     title="GridGuard AI",
     description="AI Grid Copilot Backend - Real-Time Predictive Monitoring & Optimization API",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # Add CORS Middleware for frontend integration (Vite dev server: http://localhost:5173)
