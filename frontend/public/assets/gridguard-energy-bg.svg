@@ -1,0 +1,30 @@
+<svg width="1440" height="900" viewBox="0 0 1440 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gridGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#073B3A" stop-opacity="0.04"/>
+      <stop offset="50%" stop-color="#0B5D56" stop-opacity="0.07"/>
+      <stop offset="100%" stop-color="#0E7490" stop-opacity="0.02"/>
+    </linearGradient>
+    <linearGradient id="flowLineGrad" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#0B5D56" stop-opacity="0.0"/>
+      <stop offset="20%" stop-color="#0F766E" stop-opacity="0.12"/>
+      <stop offset="60%" stop-color="#0E7490" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#2563EB" stop-opacity="0.0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Large subtle energy transmission curves -->
+  <path d="M-100 220C300 280 450 120 750 180C1050 240 1200 140 1550 200" stroke="url(#flowLineGrad)" stroke-width="2" fill="none"/>
+  <path d="M-50 480C250 520 500 360 850 420C1200 480 1350 380 1600 440" stroke="url(#flowLineGrad)" stroke-width="1.5" stroke-dasharray="8 12" fill="none"/>
+  <path d="M100 780C450 720 700 820 1050 750C1300 700 1450 780 1650 740" stroke="url(#flowLineGrad)" stroke-width="1.5" fill="none"/>
+
+  <!-- Geometric grid node junctions -->
+  <circle cx="750" cy="180" r="3" fill="#0F766E" fill-opacity="0.2"/>
+  <circle cx="850" cy="420" r="3" fill="#0E7490" fill-opacity="0.25"/>
+  <circle cx="1050" cy="750" r="3" fill="#073B3A" fill-opacity="0.18"/>
+
+  <!-- Faint vertical coordinate grid lines -->
+  <line x1="240" y1="0" x2="240" y2="900" stroke="#073B3A" stroke-opacity="0.02" stroke-width="1"/>
+  <line x1="720" y1="0" x2="720" y2="900" stroke="#073B3A" stroke-opacity="0.025" stroke-width="1"/>
+  <line x1="1200" y1="0" x2="1200" y2="900" stroke="#073B3A" stroke-opacity="0.02" stroke-width="1"/>
+</svg>
