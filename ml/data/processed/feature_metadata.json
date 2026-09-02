@@ -1,0 +1,473 @@
+{
+  "source_file": "ml/data/raw/continuous dataset.csv",
+  "forecast_horizon_hours": 24,
+  "target_column": "target_nat_demand_t_plus_24h",
+  "target_definition": "nat_demand value at origin_datetime + 24 hours",
+  "feature_columns": [
+    "lag_1h_nat_demand",
+    "lag_24h_nat_demand",
+    "lag_48h_nat_demand",
+    "lag_168h_nat_demand",
+    "lag_0h_nat_demand",
+    "roll_mean_24h_nat_demand",
+    "roll_std_24h_nat_demand",
+    "roll_mean_168h_nat_demand",
+    "roll_std_168h_nat_demand",
+    "origin_T2M_toc",
+    "lag_24h_T2M_toc",
+    "origin_QV2M_toc",
+    "lag_24h_QV2M_toc",
+    "origin_TQL_toc",
+    "lag_24h_TQL_toc",
+    "origin_W2M_toc",
+    "lag_24h_W2M_toc",
+    "origin_T2M_san",
+    "lag_24h_T2M_san",
+    "origin_QV2M_san",
+    "lag_24h_QV2M_san",
+    "origin_TQL_san",
+    "lag_24h_TQL_san",
+    "origin_W2M_san",
+    "lag_24h_W2M_san",
+    "origin_T2M_dav",
+    "lag_24h_T2M_dav",
+    "origin_QV2M_dav",
+    "lag_24h_QV2M_dav",
+    "origin_TQL_dav",
+    "lag_24h_TQL_dav",
+    "origin_W2M_dav",
+    "lag_24h_W2M_dav",
+    "target_hour_of_day",
+    "target_day_of_week",
+    "target_month",
+    "target_is_weekend",
+    "target_hour_sin",
+    "target_hour_cos",
+    "target_dow_sin",
+    "target_dow_cos",
+    "target_month_sin",
+    "target_month_cos",
+    "target_holiday_id",
+    "target_holiday_flag",
+    "target_school_flag",
+    "origin_hour_of_day",
+    "origin_day_of_week",
+    "origin_holiday_flag",
+    "origin_school_flag"
+  ],
+  "non_feature_columns": [
+    "datetime",
+    "origin_datetime",
+    "target_datetime",
+    "target_nat_demand_t_plus_24h"
+  ],
+  "n_raw_rows": 48048,
+  "n_feature_rows_before_dropna": 48048,
+  "rows_lost_start_warmup": 168,
+  "rows_lost_end_horizon": 24,
+  "rows_lost_total": 192,
+  "n_final_rows": 47856,
+  "split": {
+    "train": {
+      "n_rows": 34847,
+      "start": "2015-01-10 01:00:00",
+      "end": "2018-12-31 23:00:00"
+    },
+    "val": {
+      "n_rows": 8760,
+      "start": "2019-01-01 00:00:00",
+      "end": "2019-12-31 23:00:00"
+    },
+    "test": {
+      "n_rows": 4249,
+      "start": "2020-01-01 00:00:00",
+      "end": "2020-06-26 00:00:00"
+    }
+  },
+  "leakage_checks": {
+    "target_excluded_from_features": true,
+    "lag_1h_matches_manual_lookup": true,
+    "train_chronological": true,
+    "val_chronological": true,
+    "test_chronological": true,
+    "splits_non_overlapping_and_ordered": true,
+    "max_lookback_window_hours": 168,
+    "target_horizon_consistent": true
+  },
+  "features": {
+    "lag_1h_nat_demand": {
+      "description": "nat_demand value 1 hour(s) before the forecast origin t (i.e. value at t-1h).",
+      "source_columns": [
+        "nat_demand"
+      ],
+      "leakage_note": "Uses only past data (t-1h <= t). Safe: no information from after origin t."
+    },
+    "lag_24h_nat_demand": {
+      "description": "nat_demand value 24 hour(s) before the forecast origin t (i.e. value at t-24h).",
+      "source_columns": [
+        "nat_demand"
+      ],
+      "leakage_note": "Uses only past data (t-24h <= t). Safe: no information from after origin t."
+    },
+    "lag_48h_nat_demand": {
+      "description": "nat_demand value 48 hour(s) before the forecast origin t (i.e. value at t-48h).",
+      "source_columns": [
+        "nat_demand"
+      ],
+      "leakage_note": "Uses only past data (t-48h <= t). Safe: no information from after origin t."
+    },
+    "lag_168h_nat_demand": {
+      "description": "nat_demand value 168 hour(s) before the forecast origin t (i.e. value at t-168h).",
+      "source_columns": [
+        "nat_demand"
+      ],
+      "leakage_note": "Uses only past data (t-168h <= t). Safe: no information from after origin t."
+    },
+    "lag_0h_nat_demand": {
+      "description": "nat_demand value at the forecast origin t itself (most recent known actual).",
+      "source_columns": [
+        "nat_demand"
+      ],
+      "leakage_note": "Value at t is known when standing at t and forecasting t+24h. Safe."
+    },
+    "roll_mean_24h_nat_demand": {
+      "description": "Rolling mean of nat_demand over the trailing 24 hours ending at (and including) origin t.",
+      "source_columns": [
+        "nat_demand"
+      ],
+      "leakage_note": "min_periods=window enforced so no partial/undefined window is silently filled; window is strictly [t-w+1, t]. Safe."
+    },
+    "roll_std_24h_nat_demand": {
+      "description": "Rolling std of nat_demand over the trailing 24 hours ending at (and including) origin t.",
+      "source_columns": [
+        "nat_demand"
+      ],
+      "leakage_note": "Same trailing window as the corresponding rolling mean. Safe."
+    },
+    "roll_mean_168h_nat_demand": {
+      "description": "Rolling mean of nat_demand over the trailing 168 hours ending at (and including) origin t.",
+      "source_columns": [
+        "nat_demand"
+      ],
+      "leakage_note": "min_periods=window enforced so no partial/undefined window is silently filled; window is strictly [t-w+1, t]. Safe."
+    },
+    "roll_std_168h_nat_demand": {
+      "description": "Rolling std of nat_demand over the trailing 168 hours ending at (and including) origin t.",
+      "source_columns": [
+        "nat_demand"
+      ],
+      "leakage_note": "Same trailing window as the corresponding rolling mean. Safe."
+    },
+    "origin_T2M_toc": {
+      "description": "Weather variable 'T2M_toc' reading at the forecast origin t.",
+      "source_columns": [
+        "T2M_toc"
+      ],
+      "leakage_note": "Value at t is known at prediction time. Safe. Future (t+24h) weather deliberately excluded to avoid leaking unobserved future actuals."
+    },
+    "lag_24h_T2M_toc": {
+      "description": "Weather variable 'T2M_toc' reading 24 hours before origin t (captures prior-day-same-hour conditions).",
+      "source_columns": [
+        "T2M_toc"
+      ],
+      "leakage_note": "Uses only past data. Safe."
+    },
+    "origin_QV2M_toc": {
+      "description": "Weather variable 'QV2M_toc' reading at the forecast origin t.",
+      "source_columns": [
+        "QV2M_toc"
+      ],
+      "leakage_note": "Value at t is known at prediction time. Safe. Future (t+24h) weather deliberately excluded to avoid leaking unobserved future actuals."
+    },
+    "lag_24h_QV2M_toc": {
+      "description": "Weather variable 'QV2M_toc' reading 24 hours before origin t (captures prior-day-same-hour conditions).",
+      "source_columns": [
+        "QV2M_toc"
+      ],
+      "leakage_note": "Uses only past data. Safe."
+    },
+    "origin_TQL_toc": {
+      "description": "Weather variable 'TQL_toc' reading at the forecast origin t.",
+      "source_columns": [
+        "TQL_toc"
+      ],
+      "leakage_note": "Value at t is known at prediction time. Safe. Future (t+24h) weather deliberately excluded to avoid leaking unobserved future actuals."
+    },
+    "lag_24h_TQL_toc": {
+      "description": "Weather variable 'TQL_toc' reading 24 hours before origin t (captures prior-day-same-hour conditions).",
+      "source_columns": [
+        "TQL_toc"
+      ],
+      "leakage_note": "Uses only past data. Safe."
+    },
+    "origin_W2M_toc": {
+      "description": "Weather variable 'W2M_toc' reading at the forecast origin t.",
+      "source_columns": [
+        "W2M_toc"
+      ],
+      "leakage_note": "Value at t is known at prediction time. Safe. Future (t+24h) weather deliberately excluded to avoid leaking unobserved future actuals."
+    },
+    "lag_24h_W2M_toc": {
+      "description": "Weather variable 'W2M_toc' reading 24 hours before origin t (captures prior-day-same-hour conditions).",
+      "source_columns": [
+        "W2M_toc"
+      ],
+      "leakage_note": "Uses only past data. Safe."
+    },
+    "origin_T2M_san": {
+      "description": "Weather variable 'T2M_san' reading at the forecast origin t.",
+      "source_columns": [
+        "T2M_san"
+      ],
+      "leakage_note": "Value at t is known at prediction time. Safe. Future (t+24h) weather deliberately excluded to avoid leaking unobserved future actuals."
+    },
+    "lag_24h_T2M_san": {
+      "description": "Weather variable 'T2M_san' reading 24 hours before origin t (captures prior-day-same-hour conditions).",
+      "source_columns": [
+        "T2M_san"
+      ],
+      "leakage_note": "Uses only past data. Safe."
+    },
+    "origin_QV2M_san": {
+      "description": "Weather variable 'QV2M_san' reading at the forecast origin t.",
+      "source_columns": [
+        "QV2M_san"
+      ],
+      "leakage_note": "Value at t is known at prediction time. Safe. Future (t+24h) weather deliberately excluded to avoid leaking unobserved future actuals."
+    },
+    "lag_24h_QV2M_san": {
+      "description": "Weather variable 'QV2M_san' reading 24 hours before origin t (captures prior-day-same-hour conditions).",
+      "source_columns": [
+        "QV2M_san"
+      ],
+      "leakage_note": "Uses only past data. Safe."
+    },
+    "origin_TQL_san": {
+      "description": "Weather variable 'TQL_san' reading at the forecast origin t.",
+      "source_columns": [
+        "TQL_san"
+      ],
+      "leakage_note": "Value at t is known at prediction time. Safe. Future (t+24h) weather deliberately excluded to avoid leaking unobserved future actuals."
+    },
+    "lag_24h_TQL_san": {
+      "description": "Weather variable 'TQL_san' reading 24 hours before origin t (captures prior-day-same-hour conditions).",
+      "source_columns": [
+        "TQL_san"
+      ],
+      "leakage_note": "Uses only past data. Safe."
+    },
+    "origin_W2M_san": {
+      "description": "Weather variable 'W2M_san' reading at the forecast origin t.",
+      "source_columns": [
+        "W2M_san"
+      ],
+      "leakage_note": "Value at t is known at prediction time. Safe. Future (t+24h) weather deliberately excluded to avoid leaking unobserved future actuals."
+    },
+    "lag_24h_W2M_san": {
+      "description": "Weather variable 'W2M_san' reading 24 hours before origin t (captures prior-day-same-hour conditions).",
+      "source_columns": [
+        "W2M_san"
+      ],
+      "leakage_note": "Uses only past data. Safe."
+    },
+    "origin_T2M_dav": {
+      "description": "Weather variable 'T2M_dav' reading at the forecast origin t.",
+      "source_columns": [
+        "T2M_dav"
+      ],
+      "leakage_note": "Value at t is known at prediction time. Safe. Future (t+24h) weather deliberately excluded to avoid leaking unobserved future actuals."
+    },
+    "lag_24h_T2M_dav": {
+      "description": "Weather variable 'T2M_dav' reading 24 hours before origin t (captures prior-day-same-hour conditions).",
+      "source_columns": [
+        "T2M_dav"
+      ],
+      "leakage_note": "Uses only past data. Safe."
+    },
+    "origin_QV2M_dav": {
+      "description": "Weather variable 'QV2M_dav' reading at the forecast origin t.",
+      "source_columns": [
+        "QV2M_dav"
+      ],
+      "leakage_note": "Value at t is known at prediction time. Safe. Future (t+24h) weather deliberately excluded to avoid leaking unobserved future actuals."
+    },
+    "lag_24h_QV2M_dav": {
+      "description": "Weather variable 'QV2M_dav' reading 24 hours before origin t (captures prior-day-same-hour conditions).",
+      "source_columns": [
+        "QV2M_dav"
+      ],
+      "leakage_note": "Uses only past data. Safe."
+    },
+    "origin_TQL_dav": {
+      "description": "Weather variable 'TQL_dav' reading at the forecast origin t.",
+      "source_columns": [
+        "TQL_dav"
+      ],
+      "leakage_note": "Value at t is known at prediction time. Safe. Future (t+24h) weather deliberately excluded to avoid leaking unobserved future actuals."
+    },
+    "lag_24h_TQL_dav": {
+      "description": "Weather variable 'TQL_dav' reading 24 hours before origin t (captures prior-day-same-hour conditions).",
+      "source_columns": [
+        "TQL_dav"
+      ],
+      "leakage_note": "Uses only past data. Safe."
+    },
+    "origin_W2M_dav": {
+      "description": "Weather variable 'W2M_dav' reading at the forecast origin t.",
+      "source_columns": [
+        "W2M_dav"
+      ],
+      "leakage_note": "Value at t is known at prediction time. Safe. Future (t+24h) weather deliberately excluded to avoid leaking unobserved future actuals."
+    },
+    "lag_24h_W2M_dav": {
+      "description": "Weather variable 'W2M_dav' reading 24 hours before origin t (captures prior-day-same-hour conditions).",
+      "source_columns": [
+        "W2M_dav"
+      ],
+      "leakage_note": "Uses only past data. Safe."
+    },
+    "target_hour_of_day": {
+      "description": "Hour of day (0-23) at the target timestamp t+24h.",
+      "source_columns": [
+        "datetime"
+      ],
+      "leakage_note": "Calendar arithmetic is deterministic and known infinitely far in advance for any future timestamp. Not leakage."
+    },
+    "target_day_of_week": {
+      "description": "Day of week (0=Mon..6=Sun) at the target timestamp t+24h.",
+      "source_columns": [
+        "datetime"
+      ],
+      "leakage_note": "Calendar arithmetic is deterministic and known infinitely far in advance for any future timestamp. Not leakage."
+    },
+    "target_month": {
+      "description": "Calendar month (1-12) at the target timestamp t+24h.",
+      "source_columns": [
+        "datetime"
+      ],
+      "leakage_note": "Calendar arithmetic is deterministic and known infinitely far in advance for any future timestamp. Not leakage."
+    },
+    "target_is_weekend": {
+      "description": "1 if the target timestamp falls on Saturday/Sunday, else 0.",
+      "source_columns": [
+        "datetime"
+      ],
+      "leakage_note": "Calendar arithmetic is deterministic and known infinitely far in advance for any future timestamp. Not leakage."
+    },
+    "target_hour_sin": {
+      "description": "Sine-encoded hour of day at target timestamp (cyclical encoding).",
+      "source_columns": [
+        "datetime"
+      ],
+      "leakage_note": "Calendar arithmetic is deterministic and known infinitely far in advance for any future timestamp. Not leakage."
+    },
+    "target_hour_cos": {
+      "description": "Cosine-encoded hour of day at target timestamp (cyclical encoding).",
+      "source_columns": [
+        "datetime"
+      ],
+      "leakage_note": "Calendar arithmetic is deterministic and known infinitely far in advance for any future timestamp. Not leakage."
+    },
+    "target_dow_sin": {
+      "description": "Sine-encoded day of week at target timestamp (cyclical encoding).",
+      "source_columns": [
+        "datetime"
+      ],
+      "leakage_note": "Calendar arithmetic is deterministic and known infinitely far in advance for any future timestamp. Not leakage."
+    },
+    "target_dow_cos": {
+      "description": "Cosine-encoded day of week at target timestamp (cyclical encoding).",
+      "source_columns": [
+        "datetime"
+      ],
+      "leakage_note": "Calendar arithmetic is deterministic and known infinitely far in advance for any future timestamp. Not leakage."
+    },
+    "target_month_sin": {
+      "description": "Sine-encoded month at target timestamp (cyclical encoding).",
+      "source_columns": [
+        "datetime"
+      ],
+      "leakage_note": "Calendar arithmetic is deterministic and known infinitely far in advance for any future timestamp. Not leakage."
+    },
+    "target_month_cos": {
+      "description": "Cosine-encoded month at target timestamp (cyclical encoding).",
+      "source_columns": [
+        "datetime"
+      ],
+      "leakage_note": "Calendar arithmetic is deterministic and known infinitely far in advance for any future timestamp. Not leakage."
+    },
+    "target_holiday_id": {
+      "description": "Holiday_ID (categorical) at the target timestamp t+24h, looked up from the dataset's own calendar column.",
+      "source_columns": [
+        "Holiday_ID",
+        "holiday",
+        "school",
+        "datetime"
+      ],
+      "leakage_note": "Holiday/school calendars are published in advance and are deterministic lookups by date, not measured outcomes. Rows where target_dt falls beyond the raw data's max timestamp become NaN and are dropped along with the undefined target (see rows-lost accounting)."
+    },
+    "target_holiday_flag": {
+      "description": "Binary holiday flag at the target timestamp t+24h.",
+      "source_columns": [
+        "Holiday_ID",
+        "holiday",
+        "school",
+        "datetime"
+      ],
+      "leakage_note": "Holiday/school calendars are published in advance and are deterministic lookups by date, not measured outcomes. Rows where target_dt falls beyond the raw data's max timestamp become NaN and are dropped along with the undefined target (see rows-lost accounting)."
+    },
+    "target_school_flag": {
+      "description": "Binary school-in-session flag at the target timestamp t+24h.",
+      "source_columns": [
+        "Holiday_ID",
+        "holiday",
+        "school",
+        "datetime"
+      ],
+      "leakage_note": "Holiday/school calendars are published in advance and are deterministic lookups by date, not measured outcomes. Rows where target_dt falls beyond the raw data's max timestamp become NaN and are dropped along with the undefined target (see rows-lost accounting)."
+    },
+    "origin_hour_of_day": {
+      "description": "Hour of day (0-23) at the forecast origin t.",
+      "source_columns": [
+        "datetime",
+        "holiday",
+        "school"
+      ],
+      "leakage_note": "Origin-time values are known at prediction time by definition. Safe."
+    },
+    "origin_day_of_week": {
+      "description": "Day of week (0=Mon..6=Sun) at the forecast origin t.",
+      "source_columns": [
+        "datetime",
+        "holiday",
+        "school"
+      ],
+      "leakage_note": "Origin-time values are known at prediction time by definition. Safe."
+    },
+    "origin_holiday_flag": {
+      "description": "Binary holiday flag at the forecast origin t (from raw data, unmodified).",
+      "source_columns": [
+        "datetime",
+        "holiday",
+        "school"
+      ],
+      "leakage_note": "Origin-time values are known at prediction time by definition. Safe."
+    },
+    "origin_school_flag": {
+      "description": "Binary school-in-session flag at the forecast origin t (from raw data, unmodified).",
+      "source_columns": [
+        "datetime",
+        "holiday",
+        "school"
+      ],
+      "leakage_note": "Origin-time values are known at prediction time by definition. Safe."
+    },
+    "target_nat_demand_t_plus_24h": {
+      "description": "PREDICTION TARGET: nat_demand value 24 hours after the forecast origin t. This is the label, never a feature.",
+      "source_columns": [
+        "nat_demand"
+      ],
+      "leakage_note": "This is the label being predicted -- by construction it is the only column drawn from strictly after origin t, and it is excluded from the feature set at model-training time."
+    }
+  }
+}

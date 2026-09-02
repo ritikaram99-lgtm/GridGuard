@@ -1,0 +1,152 @@
+{
+  "period": {
+    "start": "2020-01-01 00:00:00",
+    "end": "2020-06-26 00:00:00",
+    "n_origins": 4249,
+    "n_forecast_rows": 1019760
+  },
+  "validations": {
+    "exactly_24_horizons_per_origin_feeder": true,
+    "forecast_datetime_exactly_origin_plus_horizon": true,
+    "no_duplicate_origin_horizon_feeder_rows": true,
+    "no_nan_inf_core_numeric": true,
+    "stress_score_bounded_0_100": true,
+    "utilization_non_negative": true,
+    "forecast_mw_non_negative": true,
+    "risk_level_agrees_with_engine": true,
+    "forecast_method_valid_values": true,
+    "normal_uses_bias_corrected_direct": true,
+    "shift_uses_previous_day_fallback": true,
+    "exactly_240_rows_per_origin": true,
+    "test_period_boundaries_preserved": true,
+    "chronological_ordering": true,
+    "fallback_source_never_future": true,
+    "bias_correction_no_future_leakage": true
+  },
+  "regime_distribution": {
+    "NORMAL": 3451,
+    "SHIFT": 798,
+    "pct_shift": 18.780889621087315
+  },
+  "forecast_method_distribution": {
+    "BIAS_CORRECTED_DIRECT_XGBOOST": 3451,
+    "PREVIOUS_DAY_FALLBACK": 798
+  },
+  "risk_distribution_pct": {
+    "LOW": 59.3175,
+    "MODERATE": 40.5766,
+    "HIGH": 0.1059,
+    "CRITICAL": 0.0
+  },
+  "max_stress_score": {
+    "value": 64.59823246149053,
+    "feeder_id": "F10",
+    "origin_datetime": "2020-01-20 20:00:00"
+  },
+  "max_utilization": 0.8950424653679663,
+  "n_overload_events_origin_feeder_pairs": 0,
+  "feeders_with_overload": [],
+  "min_time_to_overload_hours": null,
+  "per_feeder_summary": {
+    "F01": {
+      "feeder_type": "RESIDENTIAL",
+      "mean_stress": 23.9762,
+      "median_stress": 22.0936,
+      "max_stress": 54.9433,
+      "mean_utilization": 0.3177,
+      "max_utilization": 0.7672,
+      "n_moderate_plus": 915,
+      "n_overload": 0
+    },
+    "F02": {
+      "feeder_type": "RESIDENTIAL",
+      "mean_stress": 25.6936,
+      "median_stress": 23.6761,
+      "max_stress": 58.8787,
+      "mean_utilization": 0.3405,
+      "max_utilization": 0.8222,
+      "n_moderate_plus": 1084,
+      "n_overload": 0
+    },
+    "F03": {
+      "feeder_type": "COMMERCIAL",
+      "mean_stress": 20.5257,
+      "median_stress": 13.8711,
+      "max_stress": 58.2395,
+      "mean_utilization": 0.2663,
+      "max_utilization": 0.8012,
+      "n_moderate_plus": 1171,
+      "n_overload": 0
+    },
+    "F04": {
+      "feeder_type": "COMMERCIAL",
+      "mean_stress": 19.7725,
+      "median_stress": 13.3621,
+      "max_stress": 56.1022,
+      "mean_utilization": 0.2566,
+      "max_utilization": 0.7718,
+      "n_moderate_plus": 1129,
+      "n_overload": 0
+    },
+    "F05": {
+      "feeder_type": "INDUSTRIAL",
+      "mean_stress": 36.4795,
+      "median_stress": 35.3562,
+      "max_stress": 59.4106,
+      "mean_utilization": 0.4803,
+      "max_utilization": 0.8314,
+      "n_moderate_plus": 3151,
+      "n_overload": 0
+    },
+    "F06": {
+      "feeder_type": "INDUSTRIAL",
+      "mean_stress": 38.5183,
+      "median_stress": 37.3322,
+      "max_stress": 62.731,
+      "mean_utilization": 0.5072,
+      "max_utilization": 0.8779,
+      "n_moderate_plus": 3571,
+      "n_overload": 0
+    },
+    "F07": {
+      "feeder_type": "MIXED",
+      "mean_stress": 27.3579,
+      "median_stress": 28.9421,
+      "max_stress": 52.8016,
+      "mean_utilization": 0.3595,
+      "max_utilization": 0.7351,
+      "n_moderate_plus": 2003,
+      "n_overload": 0
+    },
+    "F08": {
+      "feeder_type": "MIXED",
+      "mean_stress": 25.6398,
+      "median_stress": 27.1245,
+      "max_stress": 49.4855,
+      "mean_utilization": 0.3369,
+      "max_utilization": 0.689,
+      "n_moderate_plus": 1760,
+      "n_overload": 0
+    },
+    "F09": {
+      "feeder_type": "EV_HEAVY",
+      "mean_stress": 27.4918,
+      "median_stress": 24.0034,
+      "max_stress": 62.4353,
+      "mean_utilization": 0.363,
+      "max_utilization": 0.8651,
+      "n_moderate_plus": 1202,
+      "n_overload": 0
+    },
+    "F10": {
+      "feeder_type": "EV_HEAVY",
+      "mean_stress": 28.4443,
+      "median_stress": 24.835,
+      "max_stress": 64.5982,
+      "mean_utilization": 0.3756,
+      "max_utilization": 0.895,
+      "n_moderate_plus": 1300,
+      "n_overload": 0
+    }
+  }
+}

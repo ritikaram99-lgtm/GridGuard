@@ -1,0 +1,211 @@
+{
+  "n_scenarios": 7,
+  "n_safe_no_action": 1,
+  "n_overload_before": 5,
+  "n_prevented": 4,
+  "n_reduced_not_prevented": 0,
+  "n_insufficient_flexibility": 1,
+  "n_duration_limited": 1,
+  "avg_intervention_cost_where_actioned": 1.1666666666666667,
+  "avg_mw_reduction_where_actioned": 26.666666666666668,
+  "intervention_combinations_selected": {
+    "BATTERY": 4,
+    "BATTERY+INDUSTRIAL": 1,
+    "EV+BATTERY": 1
+  },
+  "real_data_example": {
+    "feeder_id": "F10",
+    "target_timestamp": "2020-01-21 20:00:00",
+    "baseline_load_mw": 5.008040980678308,
+    "baseline_stress_score": 64.59823246149053,
+    "baseline_risk": "HIGH",
+    "baseline_time_to_overload": null,
+    "overload_before": false,
+    "recommended_actions": [
+      {
+        "resource": "BATTERY",
+        "valid": true,
+        "reason": null,
+        "requested_mw": 1.1513037183595098,
+        "requested_duration_hours": 3.5000000000000004,
+        "applied_mw": 1.1513037183595098,
+        "applied_duration_hours": 3.5000000000000004,
+        "clipped": false,
+        "disruption_cost": 0.5,
+        "resource_max_mw": 1.1513037183595098,
+        "resource_max_duration_hours": 3.5000000000000004
+      }
+    ],
+    "total_reduction_mw": 1.1513037183595098,
+    "projected_load_mw": 5.008040980678308,
+    "projected_stress_score": 58.59823246149052,
+    "projected_risk": "MODERATE",
+    "projected_time_to_overload": null,
+    "overload_after": false,
+    "overload_avoided": false,
+    "prevention_status": "PREVENTED",
+    "intervention_cost": 0.5,
+    "reason": "Elevated risk predicted for feeder F10 at 2020-01-21 20:00:00; intervention 'BATTERY' resolves it (verified via Simulation Engine + Stress Engine) at the lowest cost (0.5) among all 7 candidates tested.",
+    "required_reduction_mw": 0.0,
+    "max_feasible_reduction_mw": 3.4539111550785297,
+    "candidates_evaluated": 7,
+    "alternatives": [
+      {
+        "label": "BATTERY",
+        "cost": 0.5,
+        "total_reduction_mw": 1.1513037183595098,
+        "projected_risk": "MODERATE",
+        "overload_after": false,
+        "resolved": true
+      },
+      {
+        "label": "EV+BATTERY",
+        "cost": 1.5,
+        "total_reduction_mw": 2.0147815071291424,
+        "projected_risk": "MODERATE",
+        "overload_after": false,
+        "resolved": true
+      },
+      {
+        "label": "INDUSTRIAL",
+        "cost": 3.0,
+        "total_reduction_mw": 1.4391296479493874,
+        "projected_risk": "MODERATE",
+        "overload_after": false,
+        "resolved": true
+      },
+      {
+        "label": "BATTERY+INDUSTRIAL",
+        "cost": 3.5,
+        "total_reduction_mw": 2.590433366308897,
+        "projected_risk": "MODERATE",
+        "overload_after": false,
+        "resolved": true
+      },
+      {
+        "label": "EV+INDUSTRIAL",
+        "cost": 4.0,
+        "total_reduction_mw": 2.3026074367190197,
+        "projected_risk": "MODERATE",
+        "overload_after": false,
+        "resolved": true
+      },
+      {
+        "label": "EV+BATTERY+INDUSTRIAL",
+        "cost": 4.5,
+        "total_reduction_mw": 3.4539111550785297,
+        "projected_risk": "MODERATE",
+        "overload_after": false,
+        "resolved": true
+      },
+      {
+        "label": "EV",
+        "cost": 1.0,
+        "total_reduction_mw": 0.8634777887696324,
+        "projected_risk": "HIGH",
+        "overload_after": false,
+        "resolved": false
+      }
+    ]
+  },
+  "scenario_results": [
+    {
+      "scenario": "SAFE",
+      "baseline_load_mw": 60.0,
+      "baseline_risk": "MODERATE",
+      "overload_before": false,
+      "prevention_status": "NO_ACTION_REQUIRED",
+      "actions": "NONE",
+      "intervention_cost": 0.0,
+      "total_reduction_mw": 0.0,
+      "projected_load_mw": 60.0,
+      "projected_risk": "MODERATE",
+      "overload_avoided": true,
+      "candidates_evaluated": 0
+    },
+    {
+      "scenario": "SMALL_OVERLOAD",
+      "baseline_load_mw": 108.0,
+      "baseline_risk": "HIGH",
+      "overload_before": true,
+      "prevention_status": "PREVENTED",
+      "actions": "BATTERY",
+      "intervention_cost": 0.5,
+      "total_reduction_mw": 20.0,
+      "projected_load_mw": 88.0,
+      "projected_risk": "MODERATE",
+      "overload_avoided": true,
+      "candidates_evaluated": 7
+    },
+    {
+      "scenario": "MULTIPLE_FEASIBLE",
+      "baseline_load_mw": 109.0,
+      "baseline_risk": "HIGH",
+      "overload_before": true,
+      "prevention_status": "PREVENTED",
+      "actions": "BATTERY",
+      "intervention_cost": 0.5,
+      "total_reduction_mw": 20.0,
+      "projected_load_mw": 89.0,
+      "projected_risk": "HIGH",
+      "overload_avoided": true,
+      "candidates_evaluated": 7
+    },
+    {
+      "scenario": "LARGER_OVERLOAD",
+      "baseline_load_mw": 130.0,
+      "baseline_risk": "HIGH",
+      "overload_before": true,
+      "prevention_status": "PREVENTED",
+      "actions": "BATTERY+INDUSTRIAL",
+      "intervention_cost": 3.5,
+      "total_reduction_mw": 45.0,
+      "projected_load_mw": 85.0,
+      "projected_risk": "MODERATE",
+      "overload_avoided": true,
+      "candidates_evaluated": 7
+    },
+    {
+      "scenario": "INSUFFICIENT_FLEXIBILITY",
+      "baseline_load_mw": 175.0,
+      "baseline_risk": "HIGH",
+      "overload_before": true,
+      "prevention_status": "INSUFFICIENT_FLEXIBILITY",
+      "actions": "BATTERY",
+      "intervention_cost": 0.5,
+      "total_reduction_mw": 20.0,
+      "projected_load_mw": 155.0,
+      "projected_risk": "MODERATE",
+      "overload_avoided": false,
+      "candidates_evaluated": 7
+    },
+    {
+      "scenario": "DURATION_LIMITED",
+      "baseline_load_mw": 140.0,
+      "baseline_risk": "HIGH",
+      "overload_before": true,
+      "prevention_status": "DURATION_LIMITED",
+      "actions": "BATTERY",
+      "intervention_cost": 0.5,
+      "total_reduction_mw": 20.0,
+      "projected_load_mw": 120.0,
+      "projected_risk": "HIGH",
+      "overload_avoided": false,
+      "candidates_evaluated": 7
+    },
+    {
+      "scenario": "HIGH_RISK_NO_OVERLOAD",
+      "baseline_load_mw": 92.0,
+      "baseline_risk": "HIGH",
+      "overload_before": false,
+      "prevention_status": "PREVENTED",
+      "actions": "EV+BATTERY",
+      "intervention_cost": 1.5,
+      "total_reduction_mw": 35.0,
+      "projected_load_mw": 92.0,
+      "projected_risk": "MODERATE",
+      "overload_avoided": false,
+      "candidates_evaluated": 7
+    }
+  ]
+}

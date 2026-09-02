@@ -1,0 +1,8 @@
+scenario,baseline_peak_mw,scenario_peak_mw,final_peak_mw,baseline_utilization,scenario_utilization,final_utilization,baseline_stress,scenario_stress,final_stress,baseline_risk,scenario_risk,final_risk,baseline_tto,scenario_tto,final_tto,overload_before,overload_after_scenario,overload_after,overload_avoided,feasibility_status,total_reduction_mw
+NOMINAL,80.0,80.0,80.0,0.8,0.8,0.8,46.5,46.5,46.5,MODERATE,MODERATE,MODERATE,,,,False,False,False,False,not_applicable,0.0
+HIGH_TEMPERATURE,80.0,97.6,97.6,0.8,0.976,0.976,46.5,56.72999999999999,56.72999999999999,MODERATE,MODERATE,MODERATE,,,,False,False,False,False,not_applicable,0.0
+HIGH_EV_SURGE,80.0,136.0,136.0,0.8,1.36,1.36,46.5,75.0,75.0,MODERATE,HIGH,HIGH,,0.0,0.0,False,True,True,False,not_applicable,0.0
+LOW_SOLAR,80.0,82.18390421649248,82.18390421649248,0.8,0.8218390421649248,0.8218390421649248,46.5,46.5,46.5,MODERATE,MODERATE,MODERATE,,,,False,False,False,False,not_applicable,0.0
+COMBINED_ADVERSE,80.0,142.62739100188043,142.62739100188043,0.8,1.4262739100188042,1.4262739100188042,46.5,75.0,75.0,MODERATE,HIGH,HIGH,,0.0,0.0,False,True,True,False,not_applicable,0.0
+ADVERSE_PLUS_SUCCESSFUL_INTERVENTION,80.0,141.6,81.6,0.8,1.416,0.816,40.917551874827396,66.24,47.98271121229632,MODERATE,HIGH,MODERATE,,0.0,,False,True,False,True,feasible,60.0
+ADVERSE_PLUS_INSUFFICIENT_INTERVENTION,80.0,176.0,156.0,0.8,1.76,1.56,40.917551874827396,75.67493961094235,71.67493961094233,MODERATE,HIGH,HIGH,,0.0,0.0,False,True,True,False,feasible,20.0

@@ -1,0 +1,9 @@
+{
+  "win_counts_by_period": {
+    "validation": 24,
+    "test_pre_covid": 24,
+    "test_covid_onset": 2,
+    "test_full": 4
+  },
+  "conclusion": "The h=5-20 loss to the previous-day baseline is concentrated almost entirely in the COVID-onset period (direct wins only 2/24 horizons there) and is absent on validation (24/24) and pre-COVID test (24/24). Mechanistically, the direct model's mid-horizon predictions carry a systematic bias (not just variance/noise) that is negative pre-COVID (~-45 MW average, h=5-20) and flips to strongly positive during COVID-onset (~+40 MW average, h=5-20) -- because its calendar-learned 'typical' expectation, trained on 2015-2019 data, no longer matches actual (suppressed) 2020 COVID-onset demand. The previous-day baseline has no such learned reference and stays near-zero bias in both periods. This means the mid-horizon weakness is a regime-shift-driven BIAS problem, not an inherent accuracy problem with the direct architecture at those horizons."
+}
