@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: gridguard_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: gridguard
+      POSTGRES_PASSWORD: gridguard
+      POSTGRES_DB: gridguard
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: gridguard_backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://gridguard:gridguard@postgres:5432/gridguard
+      - CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:

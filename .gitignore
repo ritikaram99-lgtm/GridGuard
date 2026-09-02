@@ -6,6 +6,7 @@ dist/
 __pycache__/
 *.py[cod]
 venv/
+backend/venv/
 
 # Environment
 .env
@@ -17,6 +18,9 @@ venv/
 # ML models
 *.pkl
 *.joblib
+backend/models/*.joblib
+backend/models/*.pkl
+!backend/models/.gitkeep
 
 # OS
 .DS_Store
