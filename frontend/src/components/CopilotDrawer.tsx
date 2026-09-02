@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, HelpCircle, ChevronRight, FileText } from 'lucide-react';
+import { gridService } from '../api/gridService';
+import { BackendCopilotResponse } from '../types';
 
 interface CopilotDrawerProps {
   isOpen: boolean;
@@ -13,6 +15,14 @@ export const CopilotDrawer: React.FC<CopilotDrawerProps> = ({
   activeFeederId = 'F07',
 }) => {
   const [selectedQuestion, setSelectedQuestion] = useState<number | null>(0);
+  const [copilotData, setCopilotData] = useState<BackendCopilotResponse | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    gridService.getCopilotInsight(activeFeederId)
+      .then(data => setCopilotData(data))
+      .catch(err => console.error('Failed to load copilot:', err));
+  }, [isOpen, activeFeederId]);
 
   if (!isOpen) return null;
 
@@ -20,17 +30,23 @@ export const CopilotDrawer: React.FC<CopilotDrawerProps> = ({
     {
       id: 0,
       title: `Why is Feeder ${activeFeederId} at risk?`,
-      answer: `Feeder ${activeFeederId} is predicted to exceed its 100 MW thermal continuous rating in 38 minutes (reaching 108 MW between +45m and +60m). The primary driver is concurrent commercial EV fleet depot charging (+4.8 MW) combined with high ambient temperature air-conditioning demand (+3.6 MW), compounded by a 70% drop in rooftop solar offset (-1.5 MW).`,
+      answer: copilotData 
+        ? `${copilotData.summary} ${copilotData.risk_explanation}`
+        : `Feeder ${activeFeederId} is predicted to exceed its continuous thermal rating.`,
     },
     {
       id: 1,
       title: 'Why this recommendation?',
-      answer: `Dispatching EV depot smart charging rate throttling (5.0 MW) combined with Metro East BESS Battery Storage (9.0 MW) yields a total 14.0 MW peak load reduction. This achieves the 94.0 MW safety target (restoring 6% headroom under the 100 MW thermal limit) with zero customer outage disruption, avoiding costly industrial manufacturing interruption penalties.`,
+      answer: copilotData
+        ? `${copilotData.recommended_action_explanation} ${copilotData.expected_outcome}`
+        : `Dispatching flexible resources mitigates predicted overload while preserving grid reliability.`,
     },
     {
       id: 2,
-      title: 'Which feeder should I monitor first?',
-      answer: `Feeder F07 requires immediate attention (Stress Score 91, Time-to-Overload: 38 min, projected peak 108 MW). Secondary monitoring should watch Feeder F03 (Silicon Expressway, Stress Score 74, TTO: 52 min) and Feeder F09 (Harbor Shipyards, Stress Score 68, TTO: 58 min).`,
+      title: 'Operator Directive',
+      answer: copilotData
+        ? copilotData.operator_message
+        : `Act within the overload window to authorize mitigation.`,
     },
   ];
 

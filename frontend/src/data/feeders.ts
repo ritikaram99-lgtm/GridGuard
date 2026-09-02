@@ -1,10 +1,10 @@
 import { Feeder, Substation } from '../types';
 
 export const MOCK_SUBSTATIONS: Substation[] = [
-  { id: 'SUB_ALPHA', name: 'Substation Alpha (Metro Central)', voltage: '110/11 kV', lat: 37.7749, lng: -122.4194 },
-  { id: 'SUB_BRAVO', name: 'Substation Bravo (Tech Corridor)', voltage: '110/11 kV', lat: 37.7850, lng: -122.4010 },
-  { id: 'SUB_CHARLIE', name: 'Substation Charlie (Harbor Industrial)', voltage: '220/33 kV', lat: 37.7580, lng: -122.3950 },
-  { id: 'SUB_DELTA', name: 'Substation Delta (Highland Hills)', voltage: '66/11 kV', lat: 37.7620, lng: -122.4450 },
+  { id: 'SUB_ALPHA', name: 'Substation Alpha (Metro Central)', voltage: '110/11 kV', lat: 12.9716, lng: 77.5946 },
+  { id: 'SUB_BRAVO', name: 'Substation Bravo (Tech Corridor)', voltage: '110/11 kV', lat: 12.9800, lng: 77.5600 },
+  { id: 'SUB_CHARLIE', name: 'Substation Charlie (Harbor Industrial)', voltage: '220/33 kV', lat: 12.9352, lng: 77.6245 },
+  { id: 'SUB_DELTA', name: 'Substation Delta (North Sector)', voltage: '66/11 kV', lat: 13.0350, lng: 77.5890 },
 ];
 
 export const MOCK_FEEDERS: Feeder[] = [

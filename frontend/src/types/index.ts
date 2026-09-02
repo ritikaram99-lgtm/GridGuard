@@ -101,9 +101,9 @@ export interface PreventionPlan {
   currentLoadMw: number;
   capacityMw: number;
   predictedPeakMw: number;
-  minimumRequiredReductionMw: number; // 8 MW (108 - 100)
-  targetSafetyReductionMw: number;   // ~14 MW (bringing to 94 MW for safety margin)
-  targetSafetyLoadMw: number;        // ~94 MW
+  minimumRequiredReductionMw: number;
+  targetSafetyReductionMw: number;
+  targetSafetyLoadMw: number;
   resources: FlexibleResource[];
   totalSelectedReductionMw: number;
   totalEstimatedCostDemo: number;
@@ -111,3 +111,125 @@ export interface PreventionPlan {
   expectedPeakAfterInterventionMw: number;
   counterfactualPoints: ForecastPoint[];
 }
+
+// Live FastAPI Backend Types
+export interface BackendFeeder {
+  id: string;
+  name: string;
+  capacity: number;
+  current_load: number;
+  voltage: number;
+  location: {
+    latitude: number;
+    longitude: number;
+    lat?: number | null;
+    lon?: number | null;
+  };
+}
+
+export interface BackendForecast {
+  '15m': number;
+  '30m': number;
+  '45m': number;
+  '60m': number;
+  source?: string;
+}
+
+export interface BackendContributor {
+  name: string;
+  impact: number;
+}
+
+export interface BackendRisk {
+  score: number;
+  level: RiskLevel;
+  time_to_overload: number | null;
+  contributors?: BackendContributor[];
+}
+
+export interface BackendActionDetail {
+  action_type: string;
+  load_reduction: number;
+  cost: number;
+  disruption: number;
+}
+
+export interface BackendRecommendation {
+  feeder_id: string;
+  predicted_load: number;
+  capacity: number;
+  required_reduction: number;
+  actions: string[];
+  recommended_actions: string[];
+  predicted_after: number;
+  expected_load_after: number;
+  status: string;
+  action_details: BackendActionDetail[];
+}
+
+export interface BackendIntelligence {
+  feeder_id: string;
+  current: {
+    load: number;
+    capacity: number;
+    voltage: number;
+  };
+  location: {
+    latitude: number;
+    longitude: number;
+    lat: number;
+    lon: number;
+  };
+  forecast: BackendForecast;
+  risk: BackendRisk;
+  contributors: BackendContributor[];
+  recommendation: BackendRecommendation;
+}
+
+export interface BackendSimulationResponse {
+  feeder_id: string;
+  forecast_peak: number;
+  capacity: number;
+  changes: {
+    ev_shift: number;
+    battery: number;
+    industrial: number;
+    temperature?: number;
+    ev_demand_percent?: number;
+    solar_percent?: number;
+  };
+  total_reduction: number;
+  simulated_load: number;
+  status: string;
+  without_action_forecast?: any;
+  with_action_forecast?: any;
+  risk?: any;
+  recommendation?: any;
+  final_status: string;
+}
+
+export interface BackendDispatchResponse {
+  feeder_id: string;
+  status: string;
+  forecast_peak: number;
+  capacity: number;
+  total_reduction: number;
+  simulated_load: number;
+  overload_avoided: boolean;
+  actions: Array<{
+    action_type: string;
+    reduction_mw: number;
+    status: string;
+  }>;
+}
+
+export interface BackendCopilotResponse {
+  feeder_id: string;
+  summary: string;
+  risk_explanation: string;
+  recommended_action_explanation: string;
+  expected_outcome: string;
+  operator_message: string;
+  source: string;
+}
+

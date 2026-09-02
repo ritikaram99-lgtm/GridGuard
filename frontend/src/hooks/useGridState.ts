@@ -24,9 +24,9 @@ export function useGridState() {
           if (f.id === 'F07') {
             return {
               ...f,
-              currentLoadMw: 94,
-              peakForecastMw: 94,
-              stressScore: 42,
+              currentLoadMw: 95,
+              peakForecastMw: 95,
+              stressScore: 40,
               riskLevel: 'LOW' as const,
               timeToOverloadMin: null,
             };

@@ -35,6 +35,7 @@ export const PreventionCenter: React.FC<PreventionCenterProps> = ({
   const [resources, setResources] = useState<FlexibleResource[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [showDispatchModal, setShowDispatchModal] = useState<boolean>(false);
+  const [isDispatching, setIsDispatching] = useState<boolean>(false);
 
   // Progressive disclosure states (all collapsed by default)
   const [openSection, setOpenSection] = useState<'details' | 'resources' | 'counterfactual' | null>(null);
@@ -130,9 +131,43 @@ export const PreventionCenter: React.FC<PreventionCenterProps> = ({
     };
   });
 
-  const handleConfirmDispatch = () => {
-    onApplyMitigation();
-    setShowDispatchModal(false);
+  const handleConfirmDispatch = async () => {
+    setIsDispatching(true);
+    try {
+      const actionsToDispatch: Array<{ action_type: string; reduction_mw: number }> = [];
+      if (evReduction > 0) {
+        actionsToDispatch.push({ action_type: 'EV_SHIFT', reduction_mw: evReduction });
+      }
+      if (battReduction > 0) {
+        actionsToDispatch.push({ action_type: 'BATTERY', reduction_mw: battReduction });
+      }
+      if (indReduction > 0) {
+        actionsToDispatch.push({ action_type: 'INDUSTRIAL', reduction_mw: indReduction });
+      }
+
+      await gridService.dispatchActions(feederId, actionsToDispatch);
+      onApplyMitigation();
+      setShowDispatchModal(false);
+    } catch (err) {
+      console.error('Failed to dispatch actions:', err);
+      onApplyMitigation();
+      setShowDispatchModal(false);
+    } finally {
+      setIsDispatching(false);
+    }
+  };
+
+  const handleSimulate = async () => {
+    toggleSection('counterfactual');
+    try {
+      await gridService.simulateIntervention(feederId, {
+        ev_shift: evReduction,
+        battery: battReduction,
+        industrial: indReduction,
+      });
+    } catch (err) {
+      console.error('Failed to simulate intervention:', err);
+    }
   };
 
   return (
@@ -298,7 +333,7 @@ export const PreventionCenter: React.FC<PreventionCenterProps> = ({
         {/* Primary vs Secondary Action Buttons - Full-width stacked on mobile */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 pt-2">
           <button
-            onClick={() => toggleSection('counterfactual')}
+            onClick={handleSimulate}
             className="w-full sm:w-auto px-5 py-3 rounded-xl bg-[#073B3A] hover:bg-[#0B5D56] text-white text-xs font-bold transition-all shadow-sm flex items-center justify-center space-x-2 cursor-pointer min-h-[44px]"
           >
             <LineChart className="w-4 h-4" />
@@ -483,9 +518,10 @@ export const PreventionCenter: React.FC<PreventionCenterProps> = ({
               </button>
               <button
                 onClick={handleConfirmDispatch}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#073B3A] hover:bg-[#0B5D56] text-white text-xs font-bold shadow-sm cursor-pointer min-h-[44px] text-center"
+                disabled={isDispatching}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#073B3A] hover:bg-[#0B5D56] text-white text-xs font-bold shadow-sm cursor-pointer min-h-[44px] text-center disabled:opacity-50"
               >
-                Execute Dispatch Now
+                {isDispatching ? 'Dispatching...' : 'Execute Dispatch Now'}
               </button>
             </div>
           </div>

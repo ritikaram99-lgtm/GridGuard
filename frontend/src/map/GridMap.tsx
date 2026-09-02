@@ -44,8 +44,10 @@ export const GridMap: React.FC<GridMapProps> = ({
   onNavigateToIntelligence,
   isMitigated = false,
 }) => {
-  const defaultCenter: [number, number] = [37.7730, -122.4150];
-  const defaultZoom = 13;
+  const defaultCenter: [number, number] = feeders.length > 0 && feeders[0].coordinates.length > 0 
+    ? feeders[0].coordinates[0] 
+    : [12.9716, 77.5946];
+  const defaultZoom = 12;
   const substationIcon = createSubstationIcon();
 
   const getFeederStroke = (feeder: Feeder) => {

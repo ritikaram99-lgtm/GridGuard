@@ -49,7 +49,7 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
     return b.stressScore - a.stressScore;
   });
 
-  const criticalCount = feeders.filter(f => f.riskLevel === 'CRITICAL').length;
+  const criticalCount = feeders.filter(f => f.riskLevel === 'CRITICAL' || f.riskLevel === 'HIGH').length;
 
   useEffect(() => {
     const loadForecast = async () => {
@@ -83,7 +83,7 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         {/* Left: Large Editorial F07 Alert */}
         <div className="lg:col-span-5 bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-7 shadow-xs flex flex-col justify-between space-y-6">
-          {!isMitigated && f07.riskLevel === 'CRITICAL' ? (
+          {!isMitigated && (f07.riskLevel === 'CRITICAL' || f07.riskLevel === 'HIGH') ? (
             <>
               <div>
                 <div className="flex items-center justify-between">
@@ -257,10 +257,10 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
             Peak Forecast
           </span>
           <div className="text-3xl sm:text-4xl font-extrabold text-slate-900 font-display mt-1">
-            {isMitigated ? '94' : '108'} <span className="text-sm font-semibold text-slate-400">MW</span>
+            {isMitigated ? '95' : (f07 ? f07.peakForecastMw : '110')} <span className="text-sm font-semibold text-slate-400">MW</span>
           </div>
           <span className={`text-xs font-medium mt-0.5 block ${isMitigated ? 'text-emerald-700' : 'text-red-600'}`}>
-            {isMitigated ? 'Safe • 6.0 MW margin' : '+8.0 MW over 100 MW limit'}
+            {isMitigated ? 'Safe • 5.0 MW margin' : `+${((f07 ? f07.peakForecastMw : 110) - (f07 ? f07.capacityMw : 100)).toFixed(1)} MW over ${f07 ? f07.capacityMw : 100} MW limit`}
           </span>
         </div>
       </div>

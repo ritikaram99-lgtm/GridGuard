@@ -6,213 +6,368 @@ import {
   ShapContributor, 
   WhatIfParams, 
   WhatIfRecalculationResult,
-  RiskLevel
+  RiskLevel,
+  BackendFeeder,
+  BackendForecast,
+  BackendRisk,
+  BackendIntelligence,
+  BackendRecommendation,
+  BackendSimulationResponse,
+  BackendDispatchResponse,
+  BackendCopilotResponse,
+  FlexibleResource
 } from '../types';
-import { MOCK_FEEDERS } from '../data/feeders';
-import { F07_SHAP_CONTRIBUTORS, F07_EXPLAINABILITY_NARRATIVE } from '../data/shapMock';
-import { 
-  MOCK_F07_RESOURCES, 
-  F07_WITHOUT_ACTION_FORECAST, 
-  F07_WITH_GRIDGUARD_FORECAST 
-} from '../data/resourcesMock';
+import { apiFetch } from './client';
 
 class GridService {
   /**
-   * Fetch all network feeders, adapted for current scenario
+   * Fetch all network feeders from live FastAPI backend
+   * GET /api/feeders and enriched via GET /api/feeders/{id}/intelligence
    */
-  async getFeeders(scenarioId: ScenarioId = 'summer_peak'): Promise<Feeder[]> {
-    if (scenarioId === 'baseline') {
-      return MOCK_FEEDERS.map(f => {
-        if (f.id === 'F07') {
-          return {
-            ...f,
-            currentLoadMw: 62,
-            capacityMw: 100,
-            stressScore: 38,
-            riskLevel: 'LOW',
-            timeToOverloadMin: null,
-            peakForecastMw: 68,
-          };
+  async getFeeders(_scenarioId: ScenarioId = 'summer_peak'): Promise<Feeder[]> {
+    const rawFeeders = await apiFetch<BackendFeeder[]>('/api/feeders');
+    
+    // Enrich each feeder with real backend risk and forecast metrics
+    const feeders = await Promise.all(
+      rawFeeders.map(async (raw): Promise<Feeder> => {
+        let score = raw.current_load > raw.capacity ? 80 : 10;
+        let level: RiskLevel = raw.current_load > raw.capacity ? 'HIGH' : 'LOW';
+        let timeToOverload: number | null = null;
+        let peakForecast = raw.current_load;
+
+        try {
+          const intel = await apiFetch<BackendIntelligence>(`/api/feeders/${raw.id}/intelligence`);
+          if (intel.risk) {
+            score = intel.risk.score;
+            level = intel.risk.level;
+            timeToOverload = intel.risk.time_to_overload;
+          }
+          if (intel.forecast) {
+            peakForecast = Math.max(
+              raw.current_load,
+              intel.forecast['15m'] || 0,
+              intel.forecast['30m'] || 0,
+              intel.forecast['45m'] || 0,
+              intel.forecast['60m'] || 0
+            );
+          }
+        } catch {
+          // Fallback to basic risk evaluation if single feeder intelligence fails
+          if (raw.current_load > raw.capacity) {
+            level = 'HIGH';
+            score = 80;
+            timeToOverload = 30;
+          }
         }
+
+        const lat = raw.location?.latitude ?? 12.9716;
+        const lon = raw.location?.longitude ?? 77.5946;
+
         return {
-          ...f,
-          currentLoadMw: Math.round(f.currentLoadMw * 0.75),
-          stressScore: Math.round(f.stressScore * 0.6),
-          riskLevel: 'LOW',
-          timeToOverloadMin: null,
+          id: raw.id,
+          name: raw.name,
+          substationId: raw.id === 'F07' ? 'SUB_ALPHA' : `SUB_${raw.id}`,
+          substationName: raw.id === 'F07' ? 'Substation Alpha' : `Substation ${raw.id}`,
+          currentLoadMw: raw.current_load,
+          capacityMw: raw.capacity,
+          stressScore: score,
+          riskLevel: level,
+          timeToOverloadMin: timeToOverload,
+          peakForecastMw: peakForecast,
+          voltageKv: Math.round((raw.voltage > 1 ? raw.voltage : raw.voltage * 11) * 100) / 100,
+          coordinates: [
+            [lat, lon],
+            [lat + 0.003, lon + 0.003],
+            [lat + 0.007, lon + 0.005],
+          ],
         };
-      });
-    }
+      })
+    );
 
-    if (scenarioId === 'solar_drop') {
-      return MOCK_FEEDERS.map(f => {
-        if (f.id === 'F07') {
-          return {
-            ...f,
-            currentLoadMw: 98,
-            stressScore: 94,
-            riskLevel: 'CRITICAL',
-            timeToOverloadMin: 25,
-            peakForecastMw: 111,
-          };
-        }
-        if (f.id === 'F04' || f.id === 'F01') {
-          return {
-            ...f,
-            currentLoadMw: Math.min(f.capacityMw, Math.round(f.currentLoadMw * 1.25)),
-            stressScore: Math.min(90, f.stressScore + 25),
-            riskLevel: 'HIGH',
-          };
-        }
-        return f;
-      });
-    }
-
-    if (scenarioId === 'industrial_anomaly') {
-      return MOCK_FEEDERS.map(f => {
-        if (f.id === 'F09') {
-          return {
-            ...f,
-            currentLoadMw: 73,
-            capacityMw: 75,
-            stressScore: 92,
-            riskLevel: 'CRITICAL',
-            timeToOverloadMin: 30,
-            peakForecastMw: 83,
-          };
-        }
-        return f;
-      });
-    }
-
-    // Default: summer_peak (F07 Critical)
-    return [...MOCK_FEEDERS];
+    return feeders;
   }
 
   /**
-   * Fetch a single feeder by ID
+   * Fetch a single feeder by ID from live FastAPI backend
+   * GET /api/feeders/{id}
    */
-  async getFeederById(id: string, scenarioId: ScenarioId = 'summer_peak'): Promise<Feeder | undefined> {
-    const feeders = await this.getFeeders(scenarioId);
-    return feeders.find(f => f.id === id);
+  async getFeederById(id: string): Promise<Feeder | undefined> {
+    try {
+      const raw = await apiFetch<BackendFeeder>(`/api/feeders/${id}`);
+      const intel = await apiFetch<BackendIntelligence>(`/api/feeders/${id}/intelligence`);
+
+      const lat = raw.location?.latitude ?? 12.9716;
+      const lon = raw.location?.longitude ?? 77.5946;
+
+      const peakForecast = intel.forecast
+        ? Math.max(
+            raw.current_load,
+            intel.forecast['15m'] || 0,
+            intel.forecast['30m'] || 0,
+            intel.forecast['45m'] || 0,
+            intel.forecast['60m'] || 0
+          )
+        : raw.current_load;
+
+      return {
+        id: raw.id,
+        name: raw.name,
+        substationId: raw.id === 'F07' ? 'SUB_ALPHA' : `SUB_${raw.id}`,
+        substationName: raw.id === 'F07' ? 'Substation Alpha' : `Substation ${raw.id}`,
+        currentLoadMw: raw.current_load,
+        capacityMw: raw.capacity,
+        stressScore: intel.risk?.score ?? 10,
+        riskLevel: intel.risk?.level ?? 'LOW',
+        timeToOverloadMin: intel.risk?.time_to_overload ?? null,
+        peakForecastMw: peakForecast,
+        voltageKv: Math.round((raw.voltage > 1 ? raw.voltage : raw.voltage * 11) * 100) / 100,
+        coordinates: [
+          [lat, lon],
+          [lat + 0.003, lon + 0.003],
+          [lat + 0.007, lon + 0.005],
+        ],
+      };
+    } catch {
+      const feeders = await this.getFeeders();
+      return feeders.find(f => f.id === id);
+    }
   }
 
   /**
-   * Fetch 60-minute forecast horizon for a specific feeder
+   * Fetch 60-minute forecast horizon from live FastAPI backend
+   * GET /api/forecast/{feeder_id}
    */
-  async getForecast(feederId: string, scenarioId: ScenarioId = 'summer_peak'): Promise<ForecastPoint[]> {
-    if (feederId === 'F07') {
-      if (scenarioId === 'baseline') {
-        return [
-          { timeStep: 'Current', actualLoadMw: 62, forecastLoadMw: 62, capacityLimitMw: 100 },
-          { timeStep: '+15 min', actualLoadMw: null, forecastLoadMw: 64, capacityLimitMw: 100 },
-          { timeStep: '+30 min', actualLoadMw: null, forecastLoadMw: 67, capacityLimitMw: 100 },
-          { timeStep: '+45 min', actualLoadMw: null, forecastLoadMw: 68, capacityLimitMw: 100 },
-          { timeStep: '+60 min', actualLoadMw: null, forecastLoadMw: 66, capacityLimitMw: 100 },
-        ];
+  async getForecast(feederId: string): Promise<ForecastPoint[]> {
+    const rawForecast = await apiFetch<BackendForecast>(`/api/forecast/${feederId}`);
+    
+    // Retrieve feeder capacity and current load for proper context
+    let currentLoad = 97;
+    let capacity = 100;
+    try {
+      const feeder = await this.getFeederById(feederId);
+      if (feeder) {
+        currentLoad = feeder.currentLoadMw;
+        capacity = feeder.capacityMw;
       }
-      return [...F07_WITHOUT_ACTION_FORECAST];
+    } catch {
+      // Keep sensible default if individual fetch is slow
     }
 
-    // Generic fallback for other feeders
-    const base = feederId === 'F03' ? 78 : feederId === 'F09' ? 64 : 50;
-    const cap = feederId === 'F03' ? 90 : feederId === 'F09' ? 75 : 80;
     return [
-      { timeStep: 'Current', actualLoadMw: base, forecastLoadMw: base, capacityLimitMw: cap },
-      { timeStep: '+15 min', actualLoadMw: null, forecastLoadMw: base + 3, capacityLimitMw: cap },
-      { timeStep: '+30 min', actualLoadMw: null, forecastLoadMw: base + 6, capacityLimitMw: cap },
-      { timeStep: '+45 min', actualLoadMw: null, forecastLoadMw: base + 8, capacityLimitMw: cap },
-      { timeStep: '+60 min', actualLoadMw: null, forecastLoadMw: base + 7, capacityLimitMw: cap },
+      { timeStep: 'Current', actualLoadMw: currentLoad, forecastLoadMw: currentLoad, capacityLimitMw: capacity },
+      { timeStep: '+15 min', actualLoadMw: null, forecastLoadMw: rawForecast['15m'], capacityLimitMw: capacity },
+      { timeStep: '+30 min', actualLoadMw: null, forecastLoadMw: rawForecast['30m'], capacityLimitMw: capacity },
+      { timeStep: '+45 min', actualLoadMw: null, forecastLoadMw: rawForecast['45m'], capacityLimitMw: capacity },
+      { timeStep: '+60 min', actualLoadMw: null, forecastLoadMw: rawForecast['60m'], capacityLimitMw: capacity },
     ];
   }
 
   /**
-   * Fetch SHAP / risk explainability contributors
+   * Fetch SHAP / risk explainability contributors from live FastAPI backend
+   * GET /api/risk/{feeder_id}
    */
   async getExplainability(feederId: string): Promise<{ contributors: ShapContributor[]; narrative: string }> {
-    if (feederId === 'F07') {
+    const riskData = await apiFetch<BackendRisk>(`/api/risk/${feederId}`);
+
+    const contributors: ShapContributor[] = (riskData.contributors || []).map((c, idx) => {
+      let category: ShapContributor['category'] = 'Trajectory';
+      const lower = c.name.toLowerCase();
+      if (lower.includes('voltage')) category = 'Voltage';
+      else if (lower.includes('heat') || lower.includes('temperature')) category = 'Temperature';
+      else if (lower.includes('ev')) category = 'EV';
+      else if (lower.includes('solar')) category = 'Solar';
+
       return {
-        contributors: F07_SHAP_CONTRIBUTORS,
-        narrative: F07_EXPLAINABILITY_NARRATIVE,
+        id: `contrib_${feederId}_${idx}`,
+        featureName: c.name,
+        impactMw: c.impact,
+        category,
+        description: `${c.name} accounts for +${c.impact.toFixed(1)} MW of stress loading on circuit.`,
       };
-    }
-    return {
-      contributors: [
-        {
-          id: 'shap_base',
-          featureName: 'System Baseline Load',
-          impactMw: 2.5,
-          category: 'Trajectory',
-          description: 'Normal seasonal background energy consumption.',
-        },
-      ],
-      narrative: `Feeder ${feederId} is operating within nominal safety parameters.`,
-    };
+    });
+
+    const narrative = `Feeder ${feederId} is operating under ${riskData.level} risk (score: ${riskData.score}/100)${
+      riskData.time_to_overload ? ` with predicted thermal overload in ${riskData.time_to_overload} minutes.` : '.'
+    }`;
+
+    return { contributors, narrative };
   }
 
   /**
-   * Fetch prevention resources and counterfactual comparison for F07
+   * Fetch automated recommendation and flexible resources from live FastAPI backend
+   * POST /api/recommendations/{feeder_id}
    */
   async getPreventionPlan(feederId: string): Promise<PreventionPlan> {
-    const isF07 = feederId === 'F07';
-    const currentLoadMw = isF07 ? 97 : 70;
-    const capacityMw = isF07 ? 100 : 80;
-    const predictedPeakMw = isF07 ? 108 : 75;
+    const rec = await apiFetch<BackendRecommendation>(`/api/recommendations/${feederId}`, {
+      method: 'POST',
+    });
 
-    // Minimum required reduction: to bring peak down to capacity (108 - 100 = 8 MW)
-    const minimumRequiredReductionMw = Math.max(0, predictedPeakMw - capacityMw);
-    // Target safety reduction: to bring peak to ~94 MW with safety margin
-    const targetSafetyLoadMw = 94;
-    const targetSafetyReductionMw = Math.max(0, predictedPeakMw - targetSafetyLoadMw);
+    // Map backend action_details into frontend flexible resources
+    const evDetail = rec.action_details?.find(a => a.action_type === 'EV_SHIFT');
+    const battDetail = rec.action_details?.find(a => a.action_type === 'BATTERY');
+
+    const evReduction = evDetail?.load_reduction ?? 7.0;
+    const battReduction = battDetail?.load_reduction ?? 8.0;
+
+    const resources: FlexibleResource[] = [
+      {
+        id: 'res_ev',
+        type: 'EV',
+        name: 'Smart EV Fleet Throttle (Level 2/3 Depot)',
+        substationAssigned: `Substation Alpha - Feeder ${feederId}`,
+        maxReductionMw: 10.0,
+        selectedReductionMw: evReduction,
+        isEnabled: true,
+        estimatedCostDemo: evDetail?.cost ?? 14,
+        disruptionLevel: 'Minimal',
+        summary: 'Modulate commercial depot charging rates via OpenADR 2.0b signal.',
+      },
+      {
+        id: 'res_battery',
+        type: 'BATTERY',
+        name: 'Metro East BESS Unit 2 (Substation Battery)',
+        substationAssigned: `Substation Alpha - Feeder ${feederId}`,
+        maxReductionMw: 10.0,
+        selectedReductionMw: battReduction,
+        isEnabled: true,
+        estimatedCostDemo: battDetail?.cost ?? 24,
+        disruptionLevel: 'None',
+        summary: 'Dispatch localized Li-ion battery storage system directly onto Feeder bus.',
+      },
+      {
+        id: 'res_industrial',
+        type: 'INDUSTRIAL',
+        name: 'Commercial HVAC & Industrial Demand Response',
+        substationAssigned: `Substation Alpha - Feeder ${feederId}`,
+        maxReductionMw: 5.0,
+        selectedReductionMw: 0.0,
+        isEnabled: false,
+        estimatedCostDemo: 100,
+        disruptionLevel: 'High',
+        summary: 'Emergency standby curtailment of manufacturing chillers and compressors.',
+      },
+    ];
+
+    const totalSelected = evReduction + battReduction;
+    const totalCost = (evDetail?.cost ?? 14) + (battDetail?.cost ?? 24);
+
+    // Retrieve real forecast to build trajectory comparison points
+    let forecastPts: ForecastPoint[] = [];
+    try {
+      forecastPts = await this.getForecast(feederId);
+    } catch {
+      forecastPts = [
+        { timeStep: 'Current', actualLoadMw: 97, forecastLoadMw: 97, capacityLimitMw: 100 },
+        { timeStep: '+15 min', actualLoadMw: null, forecastLoadMw: 99, capacityLimitMw: 100 },
+        { timeStep: '+30 min', actualLoadMw: null, forecastLoadMw: 103, capacityLimitMw: 100 },
+        { timeStep: '+45 min', actualLoadMw: null, forecastLoadMw: 108, capacityLimitMw: 100 },
+        { timeStep: '+60 min', actualLoadMw: null, forecastLoadMw: 110, capacityLimitMw: 100 },
+      ];
+    }
+
+    const counterfactualPoints: ForecastPoint[] = forecastPts.map(pt => {
+      let mitigatedVal = pt.forecastLoadMw;
+      if (pt.timeStep !== 'Current') {
+        mitigatedVal = Math.min(rec.predicted_after, Math.round((pt.forecastLoadMw - totalSelected) * 10) / 10);
+      }
+      return {
+        ...pt,
+        mitigatedLoadMw: mitigatedVal,
+      };
+    });
 
     return {
-      feederId,
-      feederName: isF07 ? 'Feeder F07 (Metro Depot & Commercial)' : `Feeder ${feederId}`,
-      currentLoadMw,
-      capacityMw,
-      predictedPeakMw,
-      minimumRequiredReductionMw, // 8 MW
-      targetSafetyReductionMw,    // 14 MW
-      targetSafetyLoadMw,         // 94 MW
-      resources: MOCK_F07_RESOURCES.map(r => ({ ...r })),
-      totalSelectedReductionMw: 14.0, // EV 5MW + Battery 9MW
-      totalEstimatedCostDemo: 400,    // $120 + $280
-      isOverloadAvoided: true,
-      expectedPeakAfterInterventionMw: 94,
-      counterfactualPoints: [...F07_WITH_GRIDGUARD_FORECAST],
+      feederId: rec.feeder_id,
+      feederName: `Feeder ${rec.feeder_id} (Metro Depot & Commercial)`,
+      currentLoadMw: 97,
+      capacityMw: rec.capacity,
+      predictedPeakMw: rec.predicted_load,
+      minimumRequiredReductionMw: rec.required_reduction,
+      targetSafetyReductionMw: rec.predicted_load - rec.predicted_after,
+      targetSafetyLoadMw: rec.predicted_after,
+      resources,
+      totalSelectedReductionMw: totalSelected,
+      totalEstimatedCostDemo: totalCost,
+      isOverloadAvoided: rec.status === 'OVERLOAD_AVOIDED',
+      expectedPeakAfterInterventionMw: rec.predicted_after,
+      counterfactualPoints,
     };
   }
 
   /**
-   * Recalculate forecast and risk in What-If Simulator
-   * Pure service mock logic - no React calculation
+   * POST /api/simulate
+   * Simulates flexible resource changes against FastAPI backend
+   */
+  async simulateIntervention(
+    feederId: string, 
+    changes: { ev_shift: number; battery: number; industrial: number }
+  ): Promise<BackendSimulationResponse> {
+    return apiFetch<BackendSimulationResponse>('/api/simulate', {
+      method: 'POST',
+      body: JSON.stringify({
+        feeder_id: feederId,
+        changes: {
+          ev_shift: changes.ev_shift,
+          battery: changes.battery,
+          industrial: changes.industrial,
+        },
+      }),
+    });
+  }
+
+  /**
+   * POST /api/dispatch
+   * Authorizes intervention actions onto FastAPI backend
+   */
+  async dispatchActions(
+    feederId: string,
+    actions: Array<{ action_type: string; reduction_mw: number }>
+  ): Promise<BackendDispatchResponse> {
+    return apiFetch<BackendDispatchResponse>('/api/dispatch', {
+      method: 'POST',
+      body: JSON.stringify({
+        feeder_id: feederId,
+        actions: actions.map(a => ({
+          action_type: a.action_type,
+          reduction_mw: a.reduction_mw,
+        })),
+      }),
+    });
+  }
+
+  /**
+   * GET /api/copilot/{feeder_id}
+   * Retrieves operational Copilot summary from FastAPI backend
+   */
+  async getCopilotInsight(feederId: string): Promise<BackendCopilotResponse> {
+    return apiFetch<BackendCopilotResponse>(`/api/copilot/${feederId}`);
+  }
+
+  /**
+   * Recalculate forecast and risk in What-If Simulator (Isolated client sensitivity sandbox)
    */
   async simulateWhatIf(feederId: string, params: WhatIfParams): Promise<WhatIfRecalculationResult> {
     const capacityMw = 100;
     const baseCurrentLoad = 97;
 
-    // Deltas:
-    // Temp: baseline 36°C. Delta = (temp - 36) * 0.7 MW
     const tempDelta = (params.ambientTempC - 36) * 0.7;
-    // EV: baseline 145%. Delta = (ev% - 145) * 0.08 MW
     const evDelta = (params.evDemandPct - 145) * 0.08;
-    // Solar: baseline 40%. Delta = (40 - solar%) * 0.06 MW (less solar = higher load)
     const solarDelta = (40 - params.solarGenerationPct) * 0.06;
 
     const totalDelta = tempDelta + evDelta + solarDelta;
 
     const currentLoadMw = Math.round((baseCurrentLoad + totalDelta * 0.5) * 10) / 10;
-    const peakForecastMw = Math.round((108 + totalDelta) * 10) / 10;
+    const peakForecastMw = Math.round((110 + totalDelta) * 10) / 10;
 
-    let stressScore = Math.min(100, Math.max(10, Math.round(91 + totalDelta * 2.5)));
+    let stressScore = Math.min(100, Math.max(10, Math.round(80 + totalDelta * 2.5)));
     let riskLevel: RiskLevel = 'LOW';
     let timeToOverloadMin: number | null = null;
 
     if (peakForecastMw > capacityMw) {
       const overloadAmount = peakForecastMw - capacityMw;
-      stressScore = Math.min(100, Math.max(85, Math.round(85 + overloadAmount * 2)));
+      stressScore = Math.min(100, Math.max(80, Math.round(80 + overloadAmount * 2)));
       riskLevel = stressScore >= 90 ? 'CRITICAL' : 'HIGH';
-      timeToOverloadMin = Math.max(15, Math.round(38 - totalDelta * 1.5));
+      timeToOverloadMin = Math.max(15, Math.round(30 - totalDelta * 1.5));
     } else if (peakForecastMw >= capacityMw * 0.85) {
       riskLevel = 'MODERATE';
       stressScore = Math.round(50 + (peakForecastMw - 85) * 2);
@@ -221,7 +376,6 @@ class GridService {
       stressScore = Math.min(45, Math.max(15, Math.round(peakForecastMw * 0.4)));
     }
 
-    // Dynamic 5-point horizon
     const forecastPoints: ForecastPoint[] = [
       { timeStep: 'Current', actualLoadMw: currentLoadMw, forecastLoadMw: currentLoadMw, capacityLimitMw: capacityMw },
       { timeStep: '+15 min', actualLoadMw: null, forecastLoadMw: Math.round((currentLoadMw + (peakForecastMw - currentLoadMw) * 0.35) * 10) / 10, capacityLimitMw: capacityMw },
@@ -231,17 +385,17 @@ class GridService {
     ];
 
     const minimumRequiredReductionMw = Math.max(0, Math.round((peakForecastMw - capacityMw) * 10) / 10);
-    const safetyMarginTargetMw = 94;
+    const safetyMarginTargetMw = 95;
     const recommendedReductionMw = Math.max(0, Math.round((peakForecastMw - safetyMarginTargetMw) * 10) / 10);
 
     let recommendedCombination = 'No intervention required (Grid Safe)';
     if (recommendedReductionMw > 0) {
-      if (recommendedReductionMw <= 5) {
+      if (recommendedReductionMw <= 7) {
         recommendedCombination = `EV Smart Charging (${recommendedReductionMw.toFixed(1)} MW)`;
-      } else if (recommendedReductionMw <= 14) {
-        recommendedCombination = `EV Throttling (5.0 MW) + BESS Unit (${(recommendedReductionMw - 5.0).toFixed(1)} MW)`;
+      } else if (recommendedReductionMw <= 15) {
+        recommendedCombination = `EV Throttling (7.0 MW) + BESS Unit (${(recommendedReductionMw - 7.0).toFixed(1)} MW)`;
       } else {
-        recommendedCombination = `EV (6 MW) + BESS (9 MW) + Industrial DR (${(recommendedReductionMw - 15).toFixed(1)} MW)`;
+        recommendedCombination = `EV (7 MW) + BESS (8 MW) + Industrial DR (${(recommendedReductionMw - 15).toFixed(1)} MW)`;
       }
     }
 
