@@ -38,8 +38,9 @@ def generate_recommendation(feeder_id: str) -> Optional[RecommendationResponse]:
     if not forecast:
         return None
 
-    # 3. Determine forecast peak
-    forecast_peak = max(forecast.m15, forecast.m30, forecast.m45, forecast.m60)
+    # 3. Determine forecast peak (compatibility helper: handles both real ML
+    #    hourly forecasts and legacy mock/joblib 4-point forecasts)
+    forecast_peak = forecast_service.get_forecast_peak(forecast)
 
     # 4. Calculate required load reduction
     required_reduction = optimization_service.calculate_required_reduction(

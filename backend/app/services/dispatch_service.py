@@ -89,7 +89,7 @@ class DispatchService:
         # Retrieve current ML forecast peak for feeder
         forecast = forecast_service.get_forecast(fid)
         if forecast:
-            forecast_peak = max(forecast.m15, forecast.m30, forecast.m45, forecast.m60)
+            forecast_peak = forecast_service.get_forecast_peak(forecast)
         else:
             forecast_peak = feeder.current_load
 

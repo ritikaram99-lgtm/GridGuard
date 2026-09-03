@@ -37,7 +37,7 @@ def simulate_feeder(feeder_id: str, changes: ScenarioChanges) -> Optional[Simula
     if not forecast:
         return None
 
-    forecast_peak = max(forecast.m15, forecast.m30, forecast.m45, forecast.m60)
+    forecast_peak = forecast_service.get_forecast_peak(forecast)
 
     # 3. Retrieve available flexibility resources and constraints
     resources = flexibility_service.get_feeder_flexibility(feeder_id)

@@ -67,6 +67,8 @@ def get_feeder_intelligence(feeder_id: str) -> Optional[FeederIntelligenceRespon
             score=risk_detail.score,
             level=risk_detail.level,
             time_to_overload=risk_detail.time_to_overload,
+            time_to_overload_hours=risk_detail.time_to_overload_hours,
+            source=risk_detail.source,
         ),
         contributors=risk_detail.contributors,
         recommendation=recommendation,
