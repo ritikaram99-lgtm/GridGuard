@@ -41,10 +41,13 @@ class SimulationResponse(BaseModel):
     # Real ML Simulation Engine outputs
     baseline_risk: Optional[str] = Field(None, description="Baseline risk level before scenario/intervention")
     baseline_stress_score: Optional[float] = Field(None, description="Baseline stress score")
+    baseline_time_to_overload: Optional[float] = Field(None, description="Time to overload in hours for the baseline trajectory (before scenario adjustments); null if no crossing is predicted")
     scenario_risk: Optional[str] = Field(None, description="Risk level after scenario adjustments (weather/EV/solar)")
     scenario_stress_score: Optional[float] = Field(None, description="Stress score after scenario adjustments")
+    scenario_time_to_overload: Optional[float] = Field(None, description="Time to overload in hours for the scenario trajectory (after weather/EV/solar adjustments, before any intervention); null if no crossing is predicted")
     final_risk: Optional[str] = Field(None, description="Final risk level after intervention")
     final_stress_score: Optional[float] = Field(None, description="Final stress score after intervention")
+    final_time_to_overload: Optional[float] = Field(None, description="Time to overload in hours after any applied intervention actions (equals scenario_time_to_overload when no actions are applied); null if no crossing is predicted")
     overload_before: Optional[bool] = Field(None, description="Whether baseline trajectory breached capacity")
     overload_after_scenario: Optional[bool] = Field(None, description="Whether scenario trajectory breached capacity")
     overload_after: Optional[bool] = Field(None, description="Whether post-intervention trajectory breached capacity")

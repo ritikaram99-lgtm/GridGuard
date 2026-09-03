@@ -1,5 +1,13 @@
 export type RiskLevel = 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
 
+// Global header status tier, distinct from per-feeder RiskLevel: a feeder can
+// be HIGH/CRITICAL stress (utilization/headroom-driven) while its forecast
+// trajectory never actually crosses capacity (time_to_overload stays null) --
+// that's ELEVATED, not OVERLOAD. Only a real predicted capacity crossing
+// (the existing, unmodified ML Stress Engine's time_to_overload field) is
+// OVERLOAD. "Mitigated" is tracked separately (see isMitigated elsewhere).
+export type GlobalGridStatus = 'NOMINAL' | 'ELEVATED' | 'OVERLOAD';
+
 // Mirrors the backend's KNOWN_ML_FEEDER_IDS (ml_adapter_service.py): F01-F10
 // are the authoritative ML feeder universe (synthetic feeders displayed as
 // Delhi-area locations, real per-feeder ML forecast + Stress Engine -- see
@@ -114,7 +122,8 @@ export interface WhatIfRecalculationResult {
   peakForecastMw: number;
   stressScore: number;
   riskLevel: RiskLevel;
-  timeToOverloadMin: number | null;
+  timeToOverloadMin: number | null; // converted from timeToOverloadHours (x60); hour-resolution estimate
+  timeToOverloadHours: number | null; // real ML Simulation Engine resolution, null if no crossing predicted
   forecastPoints: ForecastPoint[];
   recommendedReductionMw: number;
   recommendedCombination: string;
@@ -280,10 +289,13 @@ export interface BackendSimulationResponse {
   scenario_peak_load_mw?: number | null;
   baseline_risk?: string | null;
   baseline_stress_score?: number | null;
+  baseline_time_to_overload?: number | null; // hours; null if no crossing predicted
   scenario_risk?: string | null;
   scenario_stress_score?: number | null;
+  scenario_time_to_overload?: number | null; // hours; null if no crossing predicted
   final_risk?: string | null;
   final_stress_score?: number | null;
+  final_time_to_overload?: number | null; // hours; null if no crossing predicted
   overload_before?: boolean | null;
   overload_after_scenario?: boolean | null;
   overload_after?: boolean | null;

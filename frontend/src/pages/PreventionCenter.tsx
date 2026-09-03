@@ -214,7 +214,7 @@ export const PreventionCenter: React.FC<PreventionCenterProps> = ({
             <Info className="w-4 h-4 text-teal-700 mt-0.5 flex-shrink-0" />
             <div>
               <span className="font-bold block text-slate-900 mb-0.5">
-                {plan.source === 'ml_prevention_engine' ? 'ML Prevention Engine Rationale:' : 'ML Action Engine Rationale:'}
+                ML Action Engine Rationale:
               </span>
               <span>{plan.reason}</span>
             </div>

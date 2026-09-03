@@ -257,8 +257,10 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
                 <div className="mt-6 pt-5 border-t border-slate-100 grid grid-cols-2 gap-4 text-xs">
                   <div>
                     <span className="text-slate-400 text-[11px] uppercase font-bold tracking-wider block">Time to Overload</span>
-                    <span className={`text-lg font-bold font-display mt-0.5 block ${result.timeToOverloadMin ? 'text-red-600' : 'text-emerald-700'}`}>
-                      {formatTto(result.timeToOverloadMin)}
+                    <span className={`text-lg font-bold font-display mt-0.5 block ${(result.timeToOverloadHours != null || result.timeToOverloadMin != null) ? 'text-red-600' : 'text-emerald-700'}`}>
+                      {result.timeToOverloadHours != null
+                        ? `~${result.timeToOverloadHours.toFixed(1)}h`
+                        : formatTto(result.timeToOverloadMin)}
                     </span>
                   </div>
                   <div>

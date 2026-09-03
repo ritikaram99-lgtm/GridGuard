@@ -410,6 +410,14 @@ class GridService {
     const stressScore = Math.round(rawSim.scenario_stress_score ?? rawSim.baseline_stress_score ?? (peakMw > capacityMw ? 85 : 30));
     const riskLevel: RiskLevel = (rawSim.scenario_risk ?? rawSim.baseline_risk ?? (stressScore >= 80 ? 'HIGH' : stressScore >= 50 ? 'MODERATE' : 'LOW')) as RiskLevel;
 
+    // Real ML Simulation Engine time-to-overload for this scenario (hours;
+    // null when the scenario trajectory never crosses capacity). No actions
+    // are applied from this page, so scenario === final; prefer scenario
+    // first to match the stress/risk precedence above, and never fabricate
+    // a value when the engine itself returned null.
+    const timeToOverloadHours = rawSim.scenario_time_to_overload ?? rawSim.final_time_to_overload ?? null;
+    const timeToOverloadMin = timeToOverloadHours != null ? Math.round(timeToOverloadHours * 60) : null;
+
     const minimumRequiredReductionMw = Math.max(0, Math.round((peakMw - capacityMw) * 10) / 10);
     const safetyTargetMw = Math.round(capacityMw * 0.90 * 10) / 10;
     const recommendedReductionMw = Math.max(0, Math.round((peakMw - safetyTargetMw) * 10) / 10);
@@ -426,7 +434,8 @@ class GridService {
       peakForecastMw: peakMw,
       stressScore,
       riskLevel,
-      timeToOverloadMin: null,
+      timeToOverloadMin,
+      timeToOverloadHours,
       forecastPoints: forecastRes?.points ?? [],
       recommendedReductionMw,
       recommendedCombination,
