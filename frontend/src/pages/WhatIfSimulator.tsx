@@ -220,7 +220,7 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
                 Simulated Outcome
               </span>
               <span className="text-xs font-bold text-slate-700">
-                Continuous Rating: 100 MW
+                Continuous Rating: {result ? `${result.capacityMw} MW` : '...'}
               </span>
             </div>
 
@@ -231,11 +231,13 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
                     <span className="text-[11px] uppercase font-bold text-slate-400 tracking-wider block">
                       Simulated Peak Load
                     </span>
-                    <div className={`text-3xl sm:text-4xl font-extrabold font-display mt-1 ${result.peakForecastMw > 100 ? 'text-red-600' : 'text-slate-900'}`}>
+                    <div className={`text-3xl sm:text-4xl font-extrabold font-display mt-1 ${result.peakForecastMw > result.capacityMw ? 'text-red-600' : 'text-slate-900'}`}>
                       {result.peakForecastMw} <span className="text-sm font-semibold text-slate-400">MW</span>
                     </div>
                     <span className="text-xs text-slate-500 font-medium mt-0.5 block">
-                      {result.peakForecastMw > 100 ? `+${(result.peakForecastMw - 100).toFixed(1)} MW Overload` : 'Safe under rating'}
+                      {result.peakForecastMw > result.capacityMw
+                        ? `+${(result.peakForecastMw - result.capacityMw).toFixed(1)} MW Overload`
+                        : 'Safe under rating'}
                     </span>
                   </div>
 

@@ -16,14 +16,9 @@ export const MOCK_SCENARIOS: GridScenario[] = [
   },
   {
     id: 'single_feeder_alert',
-    name: 'Demo: Single Feeder Alert',
-    tagline: 'Real ML scenario',
-    // Found by querying the real ML pipeline across its historical origin
-    // range: at this timestamp, feeder F06 (an industrial-type feeder) is
-    // independently classified HIGH by the real Grid Stress Engine while
-    // every other feeder stays LOW/MODERATE -- a real, naturally-occurring
-    // single-feeder alert, not an invented one.
-    description: 'A real historical origin (2020-01-20 14:00) where the ML Stress Engine independently flags exactly one feeder as HIGH risk.',
+    name: 'Demo Replay',
+    tagline: '2020-01-20 14:00 Origin',
+    description: 'Historical ML forecast origin (2020-01-20 14:00) where feeder F06 is evaluated as HIGH risk (stress score 62.61), triggering the Action → Simulation → Prevention pipeline.',
     origin: '2020-01-20 14:00:00',
   },
 ];

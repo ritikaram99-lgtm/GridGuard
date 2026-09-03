@@ -36,7 +36,7 @@ export const PreventionCenter: React.FC<PreventionCenterProps> = ({
   const [isSimulating, setIsSimulating] = useState<boolean>(false);
 
   // Progressive disclosure states (all collapsed by default)
-  const [openSection, setOpenSection] = useState<'details' | 'resources' | 'counterfactual' | null>(null);
+  const [openSection, setOpenSection] = useState<'details' | 'resources' | 'candidates' | 'counterfactual' | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -64,7 +64,7 @@ export const PreventionCenter: React.FC<PreventionCenterProps> = ({
     );
   };
 
-  const toggleSection = (section: 'details' | 'resources' | 'counterfactual') => {
+  const toggleSection = (section: 'details' | 'resources' | 'candidates' | 'counterfactual') => {
     setOpenSection(prev => (prev === section ? null : section));
   };
 
@@ -86,10 +86,8 @@ export const PreventionCenter: React.FC<PreventionCenterProps> = ({
   const hasNoActionNeeded = plan.status === 'NO_ACTION_REQUIRED' || (plan.status === 'SAFE' && resources.length === 0) || plan.actionRequired === false;
   const insufficientFlexibility = plan.status === 'INSUFFICIENT_FLEXIBILITY' || (plan.status === 'OVERLOAD' && resources.length === 0);
 
-  // Illustrative only: applies the currently-selected constant MW reduction
-  // across every forecast point, since the backend's /api/simulate endpoint
-  // (a legacy formula, not the ML Simulation Engine) does not return a full
-  // per-hour mitigated trajectory -- only a single before/after peak.
+  // Applies the currently-selected MW reduction across forecast points
+  // to visualize counterfactual load mitigation on the horizon chart.
   const counterfactualPoints = plan.forecastPoints.map(pt => ({
     ...pt,
     mitigatedLoadMw: pt.forecastLoadMw != null
@@ -140,7 +138,7 @@ export const PreventionCenter: React.FC<PreventionCenterProps> = ({
       <div className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center space-x-2 text-[11px] font-bold uppercase tracking-widest-sm text-teal-800">
-            <span>PREVENTION / RECOMMENDATION ({plan.feederId})</span>
+            <span>OVERLOAD PREVENTION / TAKE ACTION</span>
             {plan.source === 'ml_action_engine' && (
               <span className="px-2 py-0.5 rounded bg-teal-50 text-teal-800 text-[10px] border border-teal-200">
                 REAL ML ACTION ENGINE
@@ -166,38 +164,46 @@ export const PreventionCenter: React.FC<PreventionCenterProps> = ({
         </div>
 
         <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight font-display max-w-3xl leading-[1.1]">
-          Evaluated Interventions & Recommendations
+          Prevent the overload before it happens.
         </h1>
         <p className="text-sm sm:text-base text-slate-600 max-w-2xl font-normal leading-relaxed pt-1">
-          Recommended interventions for feeder {plan.feederName}, evaluated by the real ML Action Engine.
+          GridGuard recommends the most cost-effective and lowest-disruption actions to protect Feeder {plan.feederId}.
         </p>
       </div>
 
-      {/* 2. STATUS + FLOW VISUAL, entirely from real backend values */}
-      <div className="bg-white border-2 border-teal-800/20 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+      {/* 2. SUGGESTED ACTION PLAN MAIN CARD */}
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
           <div>
-            <span className="text-[11px] uppercase font-bold text-teal-800 tracking-wider block">
-              Recommendation Status
+            <span className="text-[11px] uppercase font-bold text-slate-400 tracking-wider block mb-1">
+              SUGGESTED ACTION PLAN
             </span>
-            <div className="text-lg sm:text-xl font-extrabold text-slate-900 font-display mt-0.5 flex items-center space-x-2">
-              <span>{plan.status}</span>
-            </div>
+            <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 font-display">
+              {enabled.length > 0
+                ? enabled.map(r => r.name).join(' + ')
+                : (resources.length > 0 ? resources.map(r => r.name).join(' + ') : 'No Action Required')}
+            </h2>
           </div>
+
           {resources.length > 0 && (
-            <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-xs">
+            <div className="flex items-center flex-wrap gap-x-6 gap-y-2 text-xs font-bold sm:justify-end">
               {enabled.map(r => (
-                <div key={r.id}>
-                  <span className="text-slate-400 block text-[10px] uppercase font-bold">{r.name}</span>
-                  <span className="font-extrabold text-slate-900 text-sm">
-                    -{r.selectedReductionMw.toFixed(1)} MW {r.durationHours ? `(${r.durationHours.toFixed(1)}h)` : ''}
+                <div key={r.id} className="text-left sm:text-right">
+                  <span className="text-[10px] uppercase text-slate-400 block font-bold tracking-wider">
+                    {r.name.toUpperCase()}
+                  </span>
+                  <span className="text-slate-900 font-extrabold text-sm">
+                    -{r.selectedReductionMw.toFixed(1)} MW
                   </span>
                 </div>
               ))}
-              <span className="text-slate-300 font-normal">=</span>
-              <div>
-                <span className="text-teal-800 block text-[10px] uppercase font-bold">Evaluated Total</span>
-                <span className="font-extrabold text-teal-800 text-sm">-{totalReductionMw.toFixed(1)} MW</span>
+              <div className="text-left sm:text-right border-l border-slate-200 pl-4">
+                <span className="text-[10px] uppercase text-teal-800 block font-bold tracking-wider">
+                  TOTAL REDUCTION
+                </span>
+                <span className="text-teal-800 font-extrabold text-sm">
+                  -{totalReductionMw.toFixed(1)} MW
+                </span>
               </div>
             </div>
           )}
@@ -211,62 +217,6 @@ export const PreventionCenter: React.FC<PreventionCenterProps> = ({
                 {plan.source === 'ml_prevention_engine' ? 'ML Prevention Engine Rationale:' : 'ML Action Engine Rationale:'}
               </span>
               <span>{plan.reason}</span>
-            </div>
-          </div>
-        )}
-
-        {/* Real ML Prevention Engine Candidate Alternatives Section */}
-        {plan.alternatives && plan.alternatives.length > 0 && (
-          <div className="bg-white border border-slate-200/90 rounded-xl p-4 sm:p-5 space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <span className="text-xs uppercase font-bold text-teal-800 tracking-wider">
-                Evaluated Candidate Interventions ({plan.candidatesEvaluated ?? plan.alternatives.length} Candidates Tested)
-              </span>
-              <span className="text-xs text-slate-500 font-medium">Deterministic Priority Ranking</span>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-100 text-slate-400 uppercase font-bold tracking-wider">
-                    <th className="py-2 px-3">Intervention Candidate</th>
-                    <th className="py-2 px-3">Disruption Cost</th>
-                    <th className="py-2 px-3">Total Reduction</th>
-                    <th className="py-2 px-3">Projected Risk</th>
-                    <th className="py-2 px-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                  {plan.alternatives.map((alt, idx) => (
-                    <tr key={idx} className={idx === 0 ? 'bg-teal-50/50 font-bold' : ''}>
-                      <td className="py-2.5 px-3 flex items-center space-x-1.5">
-                        <span>{alt.label}</span>
-                        {idx === 0 && (
-                          <span className="px-1.5 py-0.5 rounded bg-teal-800 text-white text-[10px] uppercase font-extrabold">
-                            Selected
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-2.5 px-3">{alt.cost.toFixed(1)}</td>
-                      <td className="py-2.5 px-3">{alt.total_reduction_mw.toFixed(2)} MW</td>
-                      <td className="py-2.5 px-3">
-                        <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                          alt.projected_risk === 'LOW' ? 'bg-emerald-100 text-emerald-800' :
-                          alt.projected_risk === 'MODERATE' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
-                        }`}>
-                          {alt.projected_risk}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-3">
-                        {alt.resolved ? (
-                          <span className="text-emerald-700 font-bold">Resolved</span>
-                        ) : (
-                          <span className="text-red-600 font-bold">Unresolved</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             </div>
           </div>
         )}
@@ -286,14 +236,14 @@ export const PreventionCenter: React.FC<PreventionCenterProps> = ({
             </div>
           </div>
         ) : (
-          <div className="bg-[#F4FAF7] border border-slate-200/90 rounded-xl p-5 sm:p-6 flex flex-col lg:flex-row items-center justify-between gap-5 sm:gap-6">
+          <div className="bg-[#F4FAF7] border border-slate-200/90 rounded-2xl p-5 sm:p-6 flex flex-col lg:flex-row items-center justify-between gap-5 sm:gap-6">
             <div className="flex flex-wrap items-center gap-x-4 sm:gap-x-8 gap-y-3">
               <div>
                 <span className="text-[11px] uppercase font-bold text-slate-400 tracking-wider block">
-                  Predicted Peak
+                  FORECASTED PEAK WITHOUT ACTION
                 </span>
-                <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-display mt-1">
-                  {plan.predictedPeakMw.toFixed(1)} <span className="text-sm font-semibold text-slate-400">MW</span>
+                <div className="text-2xl sm:text-3xl font-extrabold text-red-600 font-display mt-1">
+                  {plan.predictedPeakMw.toFixed(1)} <span className="text-sm font-semibold text-red-400">MW</span>
                 </div>
               </div>
 
@@ -301,7 +251,7 @@ export const PreventionCenter: React.FC<PreventionCenterProps> = ({
 
               <div>
                 <span className="text-[11px] uppercase font-bold text-slate-400 tracking-wider block">
-                  Selected Curtailment
+                  SUGGESTED POWER REDUCTION
                 </span>
                 <div className="text-2xl sm:text-3xl font-extrabold text-teal-800 font-display mt-1">
                   -{totalReductionMw.toFixed(1)} <span className="text-sm font-semibold text-teal-600">MW</span>
@@ -312,7 +262,7 @@ export const PreventionCenter: React.FC<PreventionCenterProps> = ({
 
               <div>
                 <span className="text-[11px] uppercase font-bold text-slate-400 tracking-wider block">
-                  Projected Load
+                  EXPECTED LOAD AFTER ACTION
                 </span>
                 <div className={`text-2xl sm:text-3xl font-extrabold font-display mt-1 ${isSafe ? 'text-emerald-700' : 'text-red-600'}`}>
                   {expectedPeakMw.toFixed(1)} <span className={`text-sm font-semibold ${isSafe ? 'text-emerald-600' : 'text-red-400'}`}>MW</span>
@@ -320,18 +270,18 @@ export const PreventionCenter: React.FC<PreventionCenterProps> = ({
               </div>
             </div>
 
-            <div className={`w-full sm:w-auto px-4 py-2.5 rounded-xl border font-extrabold text-xs sm:text-sm flex items-center justify-center space-x-2 shadow-2xs flex-shrink-0 ${
+            <div className={`w-full sm:w-auto px-4 py-2.5 rounded-full border font-extrabold text-xs sm:text-sm flex items-center justify-center space-x-2 shadow-2xs flex-shrink-0 ${
               isSafe
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                ? 'bg-emerald-100/80 border-emerald-300/80 text-emerald-800'
                 : 'bg-red-50 border-red-200 text-red-700'
             }`}>
               {isSafe ? (
                 <>
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   <span>
-                    {plan.overloadAvoided === false && plan.predictedPeakMw <= plan.capacityMw
-                      ? 'RISK MITIGATED BEFORE OVERLOAD'
-                      : 'WITHIN CAPACITY LIMIT'}
+                    {plan.capacityMw - expectedPeakMw > 0
+                      ? `SAFE (+${(plan.capacityMw - expectedPeakMw).toFixed(1)} MW SAFETY MARGIN)`
+                      : 'RISK MITIGATED BEFORE OVERLOAD'}
                   </span>
                 </>
               ) : (
@@ -352,7 +302,7 @@ export const PreventionCenter: React.FC<PreventionCenterProps> = ({
               className="w-full sm:w-auto px-5 py-3 rounded-xl bg-[#073B3A] hover:bg-[#0B5D56] text-white text-xs font-bold transition-all shadow-sm flex items-center justify-center space-x-2 cursor-pointer min-h-[44px] disabled:opacity-60"
             >
               <LineChart className="w-4 h-4" />
-              <span>{isSimulating ? 'Simulating...' : 'Simulate Selected Actions'}</span>
+              <span>{isSimulating ? 'Simulating...' : 'Preview Outcome'}</span>
             </button>
 
             <button
@@ -364,7 +314,7 @@ export const PreventionCenter: React.FC<PreventionCenterProps> = ({
                   : 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
               }`}
             >
-              <span>{isMitigated ? 'Intervention Confirmed' : 'Confirm Prevention Decision →'}</span>
+              <span>{isMitigated ? 'Intervention Confirmed' : 'Apply Actions to Grid →'}</span>
             </button>
           </div>
         )}
@@ -372,14 +322,14 @@ export const PreventionCenter: React.FC<PreventionCenterProps> = ({
 
       {/* 3. PROGRESSIVE DISCLOSURE COLLAPSIBLE SECTIONS */}
       <div className="space-y-1">
-        <div className="text-xs uppercase font-bold text-slate-400 tracking-widest-sm mb-3">
-          Supporting Detail (Click to Expand)
+        <div className="text-xs uppercase font-bold text-slate-400 tracking-wider mb-3">
+          DETAILS & AVAILABLE OPTIONS (CLICK TO EXPAND)
         </div>
 
-        {/* 1. Intervention Details -- all real backend fields */}
+        {/* 1. Reduction Targets & Safety Margin */}
         <CollapsibleSection
-          title="RECOMMENDATION DETAILS"
-          subtitle="Predicted load, required reduction, and predicted load after action"
+          title="REDUCTION TARGETS & SAFETY MARGIN"
+          subtitle="Minimum required reduction vs recommended safety margin target"
           isOpen={openSection === 'details'}
           onToggle={() => toggleSection('details')}
         >
@@ -416,14 +366,14 @@ export const PreventionCenter: React.FC<PreventionCenterProps> = ({
           </div>
         </CollapsibleSection>
 
-        {/* 2. Available Flexible Resources */}
+        {/* 2. Available Action Options */}
         {resources.length > 0 && (
           <CollapsibleSection
-            title="RECOMMENDED ACTIONS"
-            subtitle="Optimized selection -- amounts are not independently adjustable"
+            title="AVAILABLE ACTION OPTIONS"
+            subtitle="EV charging controls, energy storage batteries, and commercial reduction options"
             badge={
               <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
-                {resources.length} ACTION{resources.length !== 1 ? 'S' : ''}
+                {resources.length} AVAILABLE OPTIONS
               </span>
             }
             isOpen={openSection === 'resources'}
@@ -440,22 +390,76 @@ export const PreventionCenter: React.FC<PreventionCenterProps> = ({
                   />
                 ))}
               </div>
+            </div>
+          </CollapsibleSection>
+        )}
 
-              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/70 text-xs sm:text-[13px] text-slate-600 leading-relaxed flex items-start gap-2">
-                <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-slate-400" />
-                <span>
-                  Costs are a synthetic index, not a real market price. Toggling a card only includes/excludes it from your dispatch
-                  selection below; it does not change the MW amount, which is fixed by the optimizer's own selection.
-                </span>
+        {/* 3. Evaluated Candidate Interventions (Real ML Prevention Engine) */}
+        {plan.alternatives && plan.alternatives.length > 0 && (
+          <CollapsibleSection
+            title="EVALUATED CANDIDATE INTERVENTIONS"
+            subtitle="Deterministic priority ranking of all candidate combinations tested"
+            badge={
+              <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                {plan.candidatesEvaluated ?? plan.alternatives.length} CANDIDATES
+              </span>
+            }
+            isOpen={openSection === 'candidates'}
+            onToggle={() => toggleSection('candidates')}
+          >
+            <div className="pt-2">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-slate-400 uppercase font-bold tracking-wider">
+                      <th className="py-2 px-3">Intervention Candidate</th>
+                      <th className="py-2 px-3">Disruption Cost</th>
+                      <th className="py-2 px-3">Total Reduction</th>
+                      <th className="py-2 px-3">Projected Risk</th>
+                      <th className="py-2 px-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                    {plan.alternatives.map((alt, idx) => (
+                      <tr key={idx} className={idx === 0 ? 'bg-teal-50/50 font-bold' : ''}>
+                        <td className="py-2.5 px-3 flex items-center space-x-1.5">
+                          <span>{alt.label}</span>
+                          {idx === 0 && (
+                            <span className="px-1.5 py-0.5 rounded bg-teal-800 text-white text-[10px] uppercase font-extrabold">
+                              Selected
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3">{alt.cost.toFixed(1)}</td>
+                        <td className="py-2.5 px-3">{alt.total_reduction_mw.toFixed(2)} MW</td>
+                        <td className="py-2.5 px-3">
+                          <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                            alt.projected_risk === 'LOW' ? 'bg-emerald-100 text-emerald-800' :
+                            alt.projected_risk === 'MODERATE' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
+                          }`}>
+                            {alt.projected_risk}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3">
+                          {alt.resolved ? (
+                            <span className="text-emerald-700 font-bold">Resolved</span>
+                          ) : (
+                            <span className="text-red-600 font-bold">Unresolved</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           </CollapsibleSection>
         )}
 
-        {/* 3. Simulation result (real backend /api/simulate, legacy formula -- not the ML Simulation Engine) */}
+        {/* 3. Simulation result (real backend /api/simulate via ML Simulation Engine) */}
         <CollapsibleSection
           title="SIMULATION RESULT"
-          subtitle="A legacy formula, NOT the ML Simulation Engine (not yet integrated)"
+          subtitle="Real counterfactual trajectory evaluation from the ML Simulation Engine (ml/src/simulation_engine.py)"
           badge={
             simResult ? (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">

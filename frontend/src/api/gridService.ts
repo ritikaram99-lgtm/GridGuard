@@ -397,6 +397,7 @@ class GridService {
         changes: {
           temperature: params.ambientTempC,
           ev_demand_percent: params.evDemandPct,
+          solar_drop_percent: Math.max(0, 100 - params.solarGenerationPct),
           solar_percent: params.solarGenerationPct,
         },
       }),
@@ -405,7 +406,7 @@ class GridService {
     const forecastRes = await this.getForecast(feederId).catch(() => null);
 
     const peakMw = Math.round((rawSim.scenario_peak_load_mw ?? rawSim.simulated_load ?? rawSim.forecast_peak) * 10) / 10;
-    const capacityMw = Math.round((rawSim.capacity ?? 100) * 10) / 10;
+    const capacityMw = Math.round((rawSim.capacity ?? 17.1) * 10) / 10;
     const stressScore = Math.round(rawSim.scenario_stress_score ?? rawSim.baseline_stress_score ?? (peakMw > capacityMw ? 85 : 30));
     const riskLevel: RiskLevel = (rawSim.scenario_risk ?? rawSim.baseline_risk ?? (stressScore >= 80 ? 'HIGH' : stressScore >= 50 ? 'MODERATE' : 'LOW')) as RiskLevel;
 
