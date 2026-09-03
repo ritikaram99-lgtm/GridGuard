@@ -10,8 +10,18 @@ export const ShapContributorsBarChart: React.FC<ShapContributorsBarChartProps> =
   contributors,
   feederId,
 }) => {
-  const maxImpact = Math.max(...contributors.map(c => c.impactMw), 5.0);
+  if (contributors.length === 0) {
+    return (
+      <div className="text-xs text-slate-400 text-center py-6">
+        No active risk contributors returned for feeder {feederId}.
+      </div>
+    );
+  }
+
+  const maxImpact = Math.max(...contributors.map(c => c.impactMw), 0.1);
   const totalImpact = contributors.reduce((sum, c) => sum + c.impactMw, 0);
+  const top = [...contributors].sort((a, b) => b.impactMw - a.impactMw)[0];
+  const topPct = totalImpact > 0 ? Math.round((top.impactMw / totalImpact) * 100) : 0;
 
   return (
     <div className="w-full space-y-4">
@@ -63,7 +73,7 @@ export const ShapContributorsBarChart: React.FC<ShapContributorsBarChartProps> =
       </div>
 
       <div className="mt-4 p-4 rounded-xl bg-slate-50 border border-slate-200/70 text-xs text-slate-600 leading-relaxed">
-        <strong className="text-slate-900 font-semibold">Diagnostic Synthesis:</strong> Feeder {feederId} capacity breach is primarily driven by synchronous EV depot charging surges (31%) and ambient heat HVAC demand (24%), accelerated by a localized loss of rooftop solar offsetting generation.
+        <strong className="text-slate-900 font-semibold">Largest contributor:</strong> "{top.featureName}" accounts for {topPct}% of feeder {feederId}'s current stress-score contribution ({top.impactMw.toFixed(1)} points), per the backend's own returned breakdown.
       </div>
     </div>
   );

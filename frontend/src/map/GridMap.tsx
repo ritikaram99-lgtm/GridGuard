@@ -1,33 +1,7 @@
 import React from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker } from 'react-leaflet';
-import L from 'leaflet';
-import { Feeder, Substation } from '../types';
-import { MOCK_SUBSTATIONS } from '../data/feeders';
+import { MapContainer, TileLayer, Popup, Polyline, CircleMarker } from 'react-leaflet';
+import { Feeder } from '../types';
 import { formatMw, formatTto } from '../utils/formatters';
-
-// Clean professional Substation Pin with subtle teal/green utility accent
-const createSubstationIcon = () => {
-  return L.divIcon({
-    className: 'custom-substation-pin',
-    html: `
-      <div style="
-        background: #ffffff;
-        border: 2px solid #073B3A;
-        border-radius: 6px;
-        width: 24px;
-        height: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 2px 5px rgba(7, 59, 58, 0.15);
-      ">
-        <span style="color: #073B3A; font-size: 10px; font-weight: 800; font-family: sans-serif;">SS</span>
-      </div>
-    `,
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
-  });
-};
 
 interface GridMapProps {
   feeders: Feeder[];
@@ -44,29 +18,31 @@ export const GridMap: React.FC<GridMapProps> = ({
   onNavigateToIntelligence,
   isMitigated = false,
 }) => {
-  const defaultCenter: [number, number] = feeders.length > 0 && feeders[0].coordinates.length > 0 
-    ? feeders[0].coordinates[0] 
-    : [12.9716, 77.5946];
+  // Fallback center only used when no feeders have loaded yet -- the Delhi
+  // display reference point (see data/delhiFeederLabels.ts).
+  const defaultCenter: [number, number] = feeders.length > 0 && feeders[0].coordinates.length > 0
+    ? feeders[0].coordinates[0]
+    : [28.6139, 77.209];
   const defaultZoom = 12;
-  const substationIcon = createSubstationIcon();
 
   const getFeederStroke = (feeder: Feeder) => {
-    const isF07 = feeder.id === 'F07';
     const isSelected = feeder.id === selectedFeederId;
+    const isMitigatedFeeder = isSelected && isMitigated;
+    const isAtRisk = feeder.riskLevel === 'CRITICAL' || feeder.riskLevel === 'HIGH';
 
-    if (isF07) {
-      if (isMitigated) {
-        return {
-          color: '#16a34a', // Safe green after prevention
-          weight: 4.5,
-          opacity: 0.95,
-        };
-      }
+    if (isSelected && isAtRisk && !isMitigatedFeeder) {
       return {
-        color: '#dc2626', // Clean red when critical
+        color: '#dc2626', // Clean red when this selected feeder is critical/high risk
         weight: 4.5,
         opacity: 0.95,
         dashArray: '6, 8',
+      };
+    }
+    if (isMitigatedFeeder) {
+      return {
+        color: '#16a34a', // Safe green after prevention
+        weight: 4.5,
+        opacity: 0.95,
       };
     }
     if (isSelected) {
@@ -92,10 +68,12 @@ export const GridMap: React.FC<GridMapProps> = ({
           Network Topology
         </div>
         <div className="flex items-center space-x-1.5 sm:space-x-2">
-          <span className={`w-3 sm:w-3.5 h-1 rounded-full ${isMitigated ? 'bg-emerald-600' : 'bg-red-600'}`}></span>
-          <span className={`font-semibold ${isMitigated ? 'text-emerald-700' : 'text-red-700'}`}>
-            F07 ({isMitigated ? 'Safe' : 'Hotspot'})
-          </span>
+          <span className="w-3 sm:w-3.5 h-1 rounded-full bg-red-600"></span>
+          <span className="text-red-700 font-semibold">Selected Feeder At Risk</span>
+        </div>
+        <div className="flex items-center space-x-1.5 sm:space-x-2">
+          <span className="w-3 sm:w-3.5 h-1 bg-emerald-600 rounded-full"></span>
+          <span className="text-emerald-700 font-semibold">Mitigated</span>
         </div>
         <div className="flex items-center space-x-1.5 sm:space-x-2">
           <span className="w-3 sm:w-3.5 h-1 bg-[#073B3A] rounded-full"></span>
@@ -103,7 +81,7 @@ export const GridMap: React.FC<GridMapProps> = ({
         </div>
         <div className="flex items-center space-x-1.5 sm:space-x-2">
           <span className="w-3 sm:w-3.5 h-1 bg-slate-400 rounded-full"></span>
-          <span className="text-slate-500 font-normal">Normal 11kV Line</span>
+          <span className="text-slate-500 font-normal">Other Feeder</span>
         </div>
       </div>
 
@@ -120,25 +98,12 @@ export const GridMap: React.FC<GridMapProps> = ({
           url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
         />
 
-        {/* Substations with Deep Teal Pins */}
-        {MOCK_SUBSTATIONS.map((sub: Substation) => (
-          <Marker
-            key={sub.id}
-            position={[sub.lat, sub.lng]}
-            icon={substationIcon}
-          >
-            <Popup>
-              <div className="p-1 text-slate-800">
-                <div className="font-bold text-xs text-slate-900 font-display">{sub.name}</div>
-                <div className="text-[11px] text-slate-500 mt-0.5">Bus Rating: {sub.voltage}</div>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-
-        {/* Feeders */}
+        {/* Feeders -- no substation layer is rendered: the backend has no
+            real substation topology, and we no longer overlay a fabricated
+            one on top of real feeder data. */}
         {feeders.map((feeder) => {
-          const isF07 = feeder.id === 'F07';
+          const isSelected = feeder.id === selectedFeederId;
+          const isMitigatedFeeder = isSelected && isMitigated;
           const stroke = getFeederStroke(feeder);
 
           return (
@@ -146,7 +111,7 @@ export const GridMap: React.FC<GridMapProps> = ({
               {feeder.coordinates.length > 0 && (
                 <CircleMarker
                   center={feeder.coordinates[Math.floor(feeder.coordinates.length / 2)]}
-                  radius={isF07 ? 5 : 3.5}
+                  radius={isSelected ? 5 : 3.5}
                   pathOptions={{
                     fillColor: stroke.color,
                     fillOpacity: 0.9,
@@ -172,7 +137,7 @@ export const GridMap: React.FC<GridMapProps> = ({
                       <span className="font-extrabold text-xs text-slate-900 font-display">{feeder.id}</span>
                       <span
                         className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
-                          isF07 && isMitigated
+                          isMitigatedFeeder
                             ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                             : feeder.riskLevel === 'CRITICAL'
                             ? 'bg-red-50 text-red-700 border border-red-200'
@@ -181,7 +146,7 @@ export const GridMap: React.FC<GridMapProps> = ({
                             : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                         }`}
                       >
-                        {isF07 && isMitigated ? 'MITIGATED' : feeder.riskLevel}
+                        {isMitigatedFeeder ? 'MITIGATED' : feeder.riskLevel}
                       </span>
                     </div>
                     <div className="text-xs text-slate-600 space-y-1.5 mb-2.5">
@@ -197,8 +162,8 @@ export const GridMap: React.FC<GridMapProps> = ({
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-400">Time-to-Overload:</span>
-                        <span className={`font-bold ${isF07 && isMitigated ? 'text-emerald-700' : feeder.timeToOverloadMin ? 'text-red-600' : 'text-slate-700'}`}>
-                          {isF07 && isMitigated ? 'SAFE' : formatTto(feeder.timeToOverloadMin)}
+                        <span className={`font-bold ${feeder.timeToOverloadMin ? 'text-red-600' : 'text-slate-700'}`}>
+                          {formatTto(feeder.timeToOverloadMin)}
                         </span>
                       </div>
                       <div className="flex justify-between">

@@ -2,27 +2,23 @@ import React, { useState } from 'react';
 import { useWhatIfSimulator } from '../hooks/useWhatIfSimulator';
 import { ForecastHorizonChart } from '../charts/ForecastHorizonChart';
 import { RiskBadge } from '../components/RiskBadge';
-import { StressScoreGauge } from '../components/StressScoreGauge';
 import { CollapsibleSection } from '../components/CollapsibleSection';
 import { formatTto } from '../utils/formatters';
-import { 
-  RotateCcw, 
-  ArrowRight, 
-  Sliders, 
-  LineChart, 
-  Sparkles,
+import {
+  RotateCcw,
+  ArrowRight,
   Thermometer,
   Zap,
-  Sun
+  Sun,
 } from 'lucide-react';
 
 interface WhatIfSimulatorProps {
-  feederId?: string;
+  feederId: string;
   onNavigateToPrevention: () => void;
 }
 
 export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
-  feederId = 'F07',
+  feederId,
   onNavigateToPrevention,
 }) => {
   const { params, result, isSimulating, updateParam, resetToBaseline, applyPreset } =
@@ -57,7 +53,7 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
           What changes the grid's future?
         </h1>
         <p className="text-sm sm:text-base text-slate-600 max-w-2xl font-normal leading-relaxed pt-1">
-          Simulate how weather volatility, aggressive EV adoption, and solar cloud cover impact Feeder {feederId} capacity margins in real time.
+          Explore counterfactual what-if scenarios for feeder {feederId}.
         </p>
       </div>
 
@@ -212,7 +208,7 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
           </div>
 
           <div className="pt-4 border-t border-slate-100 text-xs text-slate-500">
-            Parameters recompute machine learning sensitivity models dynamically across all time horizons.
+            Scenario adjustments recompute counterfactual risk using the ML Simulation Engine.
           </div>
         </div>
 
@@ -224,7 +220,7 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
                 Simulated Outcome
               </span>
               <span className="text-xs font-bold text-slate-700">
-                Continuous Rating: 100 MW
+                Continuous Rating: {result ? `${result.capacityMw} MW` : '...'}
               </span>
             </div>
 
@@ -235,11 +231,13 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
                     <span className="text-[11px] uppercase font-bold text-slate-400 tracking-wider block">
                       Simulated Peak Load
                     </span>
-                    <div className={`text-3xl sm:text-4xl font-extrabold font-display mt-1 ${result.peakForecastMw > 100 ? 'text-red-600' : 'text-slate-900'}`}>
+                    <div className={`text-3xl sm:text-4xl font-extrabold font-display mt-1 ${result.peakForecastMw > result.capacityMw ? 'text-red-600' : 'text-slate-900'}`}>
                       {result.peakForecastMw} <span className="text-sm font-semibold text-slate-400">MW</span>
                     </div>
                     <span className="text-xs text-slate-500 font-medium mt-0.5 block">
-                      {result.peakForecastMw > 100 ? `+${(result.peakForecastMw - 100).toFixed(1)} MW Overload` : 'Safe under rating'}
+                      {result.peakForecastMw > result.capacityMw
+                        ? `+${(result.peakForecastMw - result.capacityMw).toFixed(1)} MW Overload`
+                        : 'Safe under rating'}
                     </span>
                   </div>
 
@@ -259,8 +257,10 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
                 <div className="mt-6 pt-5 border-t border-slate-100 grid grid-cols-2 gap-4 text-xs">
                   <div>
                     <span className="text-slate-400 text-[11px] uppercase font-bold tracking-wider block">Time to Overload</span>
-                    <span className={`text-lg font-bold font-display mt-0.5 block ${result.timeToOverloadMin ? 'text-red-600' : 'text-emerald-700'}`}>
-                      {formatTto(result.timeToOverloadMin)}
+                    <span className={`text-lg font-bold font-display mt-0.5 block ${(result.timeToOverloadHours != null || result.timeToOverloadMin != null) ? 'text-red-600' : 'text-emerald-700'}`}>
+                      {result.timeToOverloadHours != null
+                        ? `~${result.timeToOverloadHours.toFixed(1)}h`
+                        : formatTto(result.timeToOverloadMin)}
                     </span>
                   </div>
                   <div>

@@ -14,7 +14,7 @@ router = APIRouter(
 @router.get("/status", response_model=DatabaseStatusResponse)
 def get_db_status() -> DatabaseStatusResponse:
     """Check connectivity status of the PostgreSQL database engine."""
-    is_connected = check_db_connection()
+    is_connected = check_db_connection(force=True)
     return DatabaseStatusResponse(
         database="postgresql",
         connected=is_connected,

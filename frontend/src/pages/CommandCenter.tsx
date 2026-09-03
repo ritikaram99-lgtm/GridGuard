@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Feeder, ForecastPoint } from '../types';
+import { Feeder, ForecastPoint, isMlFeeder } from '../types';
 import { gridService } from '../api/gridService';
 import { RiskBadge } from '../components/RiskBadge';
 import { StressScoreGauge } from '../components/StressScoreGauge';
@@ -7,14 +7,15 @@ import { CollapsibleSection } from '../components/CollapsibleSection';
 import { GridMap } from '../map/GridMap';
 import { ForecastHorizonChart } from '../charts/ForecastHorizonChart';
 import { MOCK_RECENT_EVENTS } from '../data/eventsMock';
-import { formatMw } from '../utils/formatters';
-import { 
-  AlertCircle, 
-  CheckCircle2, 
-  ArrowRight, 
-  ChevronRight, 
-  AlertTriangle, 
+import { formatMw, formatTto } from '../utils/formatters';
+import {
+  AlertCircle,
+  CheckCircle2,
+  ArrowRight,
+  ChevronRight,
+  AlertTriangle,
   Info,
+  ShieldCheck,
 } from 'lucide-react';
 
 type CollapsibleTab = 'ranking' | 'forecast' | 'events';
@@ -25,7 +26,55 @@ interface CommandCenterProps {
   onSelectFeeder: (id: string) => void;
   onNavigateToIntelligence: (feederId: string) => void;
   onNavigateToPrevention: () => void;
-  isMitigated: boolean;
+  mitigatedFeederId: string | null;
+}
+
+// -----------------------------------------------------------------------
+// Featured grid event selection.
+//
+// NOTE ON SCOPE: the backend does not currently expose any endpoint with
+// real event/alert timestamps (risk alerts ARE persisted server-side --
+// see backend/app/models/alert.py / db_service.record_alert -- but no route
+// returns those rows; /api/db/summary only returns aggregate counts). So
+// this cannot determine a true "most recently occurred" event in a
+// timestamp sense. Instead it derives the most operationally relevant
+// feeder from the CURRENT real risk snapshot (backend ML Stress Engine
+// output for every feeder), which is the closest honest approximation
+// available today. "Recently mitigated" is only ever shown for a feeder
+// this browser session itself actually dispatched against (a real,
+// verified action) -- never inferred or fabricated.
+// -----------------------------------------------------------------------
+type FeaturedEvent =
+  | { kind: 'AT_RISK'; feeder: Feeder }
+  | { kind: 'MITIGATED'; feeder: Feeder }
+  | { kind: 'STABLE' };
+
+function selectFeaturedEvent(feeders: Feeder[], mitigatedFeederId: string | null): FeaturedEvent {
+  // Restricted to the 10 real ML feeders: legacy non-ML feeders (e.g. F12)
+  // sit on an incomparable scale (F12's forecast is raw NATIONAL demand, not
+  // a feeder-level allocation -- see backend/app/services/forecast_service.py),
+  // so mixing them into "what needs attention" would misrepresent the ML
+  // Stress Engine's real signal.
+  const mlFeeders = feeders.filter(f => isMlFeeder(f.id));
+
+  const critical = mlFeeders
+    .filter(f => f.riskLevel === 'CRITICAL' || f.riskLevel === 'HIGH')
+    .sort((a, b) => b.stressScore - a.stressScore);
+  if (critical.length > 0) {
+    return { kind: 'AT_RISK', feeder: critical[0] };
+  }
+
+  if (mitigatedFeederId) {
+    const mitigated = mlFeeders.find(f => f.id === mitigatedFeederId);
+    if (mitigated) return { kind: 'MITIGATED', feeder: mitigated };
+  }
+
+  const moderate = mlFeeders.filter(f => f.riskLevel === 'MODERATE').sort((a, b) => b.stressScore - a.stressScore);
+  if (moderate.length > 0) {
+    return { kind: 'AT_RISK', feeder: moderate[0] };
+  }
+
+  return { kind: 'STABLE' };
 }
 
 export const CommandCenter: React.FC<CommandCenterProps> = ({
@@ -34,30 +83,37 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
   onSelectFeeder,
   onNavigateToIntelligence,
   onNavigateToPrevention,
-  isMitigated,
+  mitigatedFeederId,
 }) => {
   const [activeSection, setActiveSection] = useState<CollapsibleTab | null>(null);
   const [forecastData, setForecastData] = useState<ForecastPoint[]>([]);
 
-  // Feeder F07 specific telemetry
-  const f07 = feeders.find(f => f.id === 'F07') || feeders[0];
+  const event = selectFeaturedEvent(feeders, mitigatedFeederId);
+  const featuredFeeder = event.kind !== 'STABLE' ? event.feeder : undefined;
 
-  // Prioritize critical feeders first
-  const sortedFeeders = [...feeders].sort((a, b) => {
-    if (a.id === 'F07') return -1;
-    if (b.id === 'F07') return 1;
-    return b.stressScore - a.stressScore;
-  });
+  const sortedFeeders = [...feeders].sort((a, b) => b.stressScore - a.stressScore);
+  const mlFeeders = feeders.filter(f => isMlFeeder(f.id));
+  const criticalCount = mlFeeders.filter(f => f.riskLevel === 'CRITICAL' || f.riskLevel === 'HIGH').length;
+  // Restricted to ML feeders -- see selectFeaturedEvent's comment on why
+  // legacy feeders (national-scale forecast) can't be compared on this axis.
+  const highestForecastFeeder = mlFeeders.length
+    ? [...mlFeeders].sort((a, b) => b.peakForecastMw - a.peakForecastMw)[0]
+    : undefined;
 
-  const criticalCount = feeders.filter(f => f.riskLevel === 'CRITICAL' || f.riskLevel === 'HIGH').length;
-
+  const featuredFeederId = featuredFeeder?.id;
   useEffect(() => {
-    const loadForecast = async () => {
-      const data = await gridService.getForecast('F07');
-      setForecastData(data);
-    };
-    loadForecast();
-  }, []);
+    if (!featuredFeederId) {
+      setForecastData([]);
+      return;
+    }
+    let cancelled = false;
+    gridService.getForecast(featuredFeederId).then(result => {
+      if (!cancelled) setForecastData(result.points);
+    }).catch(() => {
+      if (!cancelled) setForecastData([]);
+    });
+    return () => { cancelled = true; };
+  }, [featuredFeederId]);
 
   const toggleSection = (section: CollapsibleTab) => {
     setActiveSection((prev: CollapsibleTab | null) => (prev === section ? null : section));
@@ -75,37 +131,36 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
           Predicting grid stress before an overload occurs.
         </h1>
         <p className="text-sm sm:text-base text-slate-600 max-w-2xl font-normal leading-relaxed pt-1">
-          GridGuard continuously forecasts feeder stress and identifies thermal overload risk before it becomes an outage.
+          GridGuard continuously forecasts feeder stress and identifies thermal overload risk across all {feeders.length} monitored feeders.
         </p>
       </div>
 
-      {/* 2. ASYMMETRICAL EDITORIAL HERO: F07 ALERT + GRID TOPOLOGY */}
+      {/* 2. FEATURED GRID EVENT + TOPOLOGY */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        {/* Left: Large Editorial F07 Alert */}
+        {/* Left: Data-driven featured event card */}
         <div className="lg:col-span-5 bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-7 shadow-xs flex flex-col justify-between space-y-6">
-          {!isMitigated && (f07.riskLevel === 'CRITICAL' || f07.riskLevel === 'HIGH') ? (
+          {event.kind === 'AT_RISK' && featuredFeeder ? (
             <>
               <div>
                 <div className="flex items-center justify-between">
                   <span className="text-3xl sm:text-4xl font-extrabold text-slate-900 font-display">
-                    F07
+                    {featuredFeeder.id}
                   </span>
                   <span className="px-2.5 py-1 rounded-full bg-red-50 border border-red-200 text-red-700 text-xs font-bold uppercase tracking-wider">
-                    Overload Risk
+                    {featuredFeeder.riskLevel} Risk
                   </span>
                 </div>
                 <div className="text-xs text-slate-500 font-medium mt-0.5">
-                  Metro Depot & Commercial • Substation Alpha
+                  {featuredFeeder.name}
                 </div>
 
-                {/* Major Metrics with Generous Typography */}
                 <div className="mt-6 pt-5 border-t border-slate-100 grid grid-cols-2 gap-4">
                   <div>
                     <span className="text-[11px] uppercase font-bold text-slate-400 tracking-wider block">
                       Current Load
                     </span>
                     <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-display mt-0.5">
-                      {f07.currentLoadMw} <span className="text-sm font-semibold text-slate-400">/ {f07.capacityMw} MW</span>
+                      {formatMw(featuredFeeder.currentLoadMw)} <span className="text-sm font-semibold text-slate-400">/ {featuredFeeder.capacityMw.toFixed(1)} MW</span>
                     </div>
                   </div>
 
@@ -114,7 +169,7 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
                       Predicted Peak
                     </span>
                     <div className="text-2xl sm:text-3xl font-extrabold text-red-600 font-display mt-0.5">
-                      {f07.peakForecastMw} <span className="text-sm font-semibold text-red-400">MW</span>
+                      {formatMw(featuredFeeder.peakForecastMw)} <span className="text-sm font-semibold text-red-400">MW</span>
                     </div>
                   </div>
                 </div>
@@ -122,64 +177,89 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
                 <div className="mt-5 p-3.5 rounded-xl bg-red-50/60 border border-red-200/80 flex items-start space-x-3">
                   <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
                   <div className="text-xs text-red-800 leading-relaxed">
-                    Expected to exceed {f07.capacityMw} MW continuous thermal rating in <strong className="font-bold text-red-950">{f07.timeToOverloadMin ?? 38} minutes</strong>. Immediate load curtailment required.
+                    Stress score {featuredFeeder.stressScore}/100 ({featuredFeeder.riskLevel}).{' '}
+                    {featuredFeeder.timeToOverloadHours != null ? (
+                      <>Estimated time to overload: <strong className="font-bold text-red-950">~{featuredFeeder.timeToOverloadHours.toFixed(1)} hours</strong> (hour-resolution estimate).</>
+                    ) : featuredFeeder.timeToOverloadMin != null ? (
+                      <>Estimated time to overload: <strong className="font-bold text-red-950">{formatTto(featuredFeeder.timeToOverloadMin)}</strong>.</>
+                    ) : (
+                      'No overload crossing predicted within the current forecast horizon.'
+                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Action Buttons - Stack on mobile, side-by-side on tablet/desktop */}
               <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 <button
-                  onClick={onNavigateToPrevention}
+                  onClick={() => { onSelectFeeder(featuredFeeder.id); onNavigateToPrevention(); }}
                   className="w-full sm:flex-1 px-4 py-3 rounded-xl bg-[#073B3A] hover:bg-[#0B5D56] text-white text-xs font-bold transition-all shadow-sm flex items-center justify-center space-x-1.5 cursor-pointer min-h-[44px]"
                 >
-                  <span>Prevent Overload</span>
+                  <span>View Recommendation</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
                 <button
-                  onClick={() => onNavigateToIntelligence('F07')}
+                  onClick={() => { onSelectFeeder(featuredFeeder.id); onNavigateToIntelligence(featuredFeeder.id); }}
                   className="w-full sm:w-auto px-4 py-3 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors cursor-pointer min-h-[44px] text-center"
                 >
-                  Investigate F07
+                  View Feeder
                 </button>
               </div>
             </>
-          ) : (
+          ) : event.kind === 'MITIGATED' && featuredFeeder ? (
             <div className="h-full flex flex-col justify-between py-2">
               <div>
                 <div className="flex items-center justify-between">
                   <span className="text-3xl sm:text-4xl font-extrabold text-slate-900 font-display">
-                    F07
+                    {featuredFeeder.id}
                   </span>
                   <span className="px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold uppercase tracking-wider flex items-center space-x-1">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Mitigated</span>
+                    <span>Dispatched</span>
                   </span>
                 </div>
                 <div className="text-xs text-slate-500 font-medium mt-0.5">
-                  Metro Depot & Commercial • Substation Alpha
+                  {featuredFeeder.name}
                 </div>
 
                 <div className="mt-6 pt-5 border-t border-slate-100">
                   <span className="text-[11px] uppercase font-bold text-slate-400 tracking-wider block">
-                    Operating State After Dispatch
+                    Current Status (This Session)
                   </span>
                   <div className="text-3xl font-extrabold text-emerald-700 font-display mt-0.5">
-                    94.0 MW <span className="text-sm font-semibold text-emerald-600">(Safe)</span>
+                    {featuredFeeder.riskLevel} <span className="text-sm font-semibold text-emerald-600">({featuredFeeder.stressScore}/100)</span>
                   </div>
                   <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-                    Overload averted. Coordinated EV fleet throttling (-5 MW) and Substation BESS discharge (-9 MW) operating at 6% continuous margin.
+                    A mitigation action was dispatched for this feeder in the current session. No persisted
+                    before/after dispatch record exists yet, so no specific MW reduction is claimed here --
+                    the live risk state above is the real current value.
                   </p>
                 </div>
               </div>
 
               <div className="pt-4 border-t border-slate-100">
                 <button
-                  onClick={() => onNavigateToIntelligence('F07')}
+                  onClick={() => { onSelectFeeder(featuredFeeder.id); onNavigateToIntelligence(featuredFeeder.id); }}
                   className="w-full px-4 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition-colors text-center cursor-pointer min-h-[44px]"
                 >
                   Inspect Feeder Telemetry →
                 </button>
+              </div>
+            </div>
+          ) : (
+            <div className="h-full flex flex-col justify-between py-2">
+              <div>
+                <div className="flex items-center space-x-2">
+                  <ShieldCheck className="w-8 h-8 text-emerald-600" />
+                  <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-display">
+                    Grid Stable
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 font-medium mt-2 leading-relaxed">
+                  No feeder is currently classified HIGH or CRITICAL risk by the ML Stress Engine across all {feeders.length} monitored feeders.
+                </p>
+              </div>
+              <div className="pt-4 border-t border-slate-100 text-xs text-slate-500">
+                Select any feeder below to inspect its current forecast and risk detail.
               </div>
             </div>
           )}
@@ -193,13 +273,15 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
                 Distribution Network Topology
               </h2>
               <span className="text-xs font-semibold text-slate-900">
-                10 Feeders • 4 Primary Substations
+                {feeders.length} Feeders
               </span>
             </div>
-            <div className="flex items-center space-x-2 text-xs font-medium text-slate-600">
-              <span className="w-2 h-2 rounded-full bg-red-600"></span>
-              <span>F07 Overload Hotspot</span>
-            </div>
+            {featuredFeeder && (
+              <div className="flex items-center space-x-2 text-xs font-medium text-slate-600">
+                <span className={`w-2 h-2 rounded-full ${event.kind === 'AT_RISK' ? 'bg-red-600' : 'bg-emerald-600'}`}></span>
+                <span>{featuredFeeder.id} {event.kind === 'AT_RISK' ? 'Elevated Risk' : 'Dispatched'}</span>
+              </div>
+            )}
           </div>
 
           <div className="flex-1 w-full min-h-[300px] sm:min-h-[340px] rounded-xl overflow-hidden">
@@ -208,59 +290,59 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
               selectedFeederId={selectedFeederId}
               onSelectFeeder={onSelectFeeder}
               onNavigateToIntelligence={onNavigateToIntelligence}
-              isMitigated={isMitigated}
+              isMitigated={selectedFeederId === mitigatedFeederId}
             />
           </div>
         </div>
       </div>
 
-      {/* 3. FOUR KEY OPERATIONAL METRICS (Open 2x2 on Mobile, 4-Column on Desktop) */}
+      {/* 3. FOUR KEY OPERATIONAL METRICS */}
       <div className="py-6 border-y border-slate-200/80 grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
         <div>
           <span className="text-[11px] uppercase font-bold text-slate-400 tracking-wider block">
-            Grid Health Index
-          </span>
-          <div className="text-3xl sm:text-4xl font-extrabold text-slate-900 font-display mt-1">
-            {isMitigated ? '99.8%' : '99.2%'}
-          </div>
-          <span className="text-xs text-emerald-700 font-medium mt-0.5 block">
-            Within reliability limits
-          </span>
-        </div>
-
-        <div className="border-l border-slate-200/80 pl-6 lg:pl-8">
-          <span className="text-[11px] uppercase font-bold text-slate-400 tracking-wider block">
-            Active Feeders
+            Feeders Monitored
           </span>
           <div className="text-3xl sm:text-4xl font-extrabold text-slate-900 font-display mt-1">
             {feeders.length}
           </div>
           <span className="text-xs text-slate-500 font-medium mt-0.5 block">
-            All 4 substations synced
+            F01-F10 ML feeders{feeders.some(f => f.id === 'F12') ? ' + legacy F12' : ''}
+          </span>
+        </div>
+
+        <div className="border-l border-slate-200/80 pl-6 lg:pl-8">
+          <span className="text-[11px] uppercase font-bold text-slate-400 tracking-wider block">
+            Feeders At Risk
+          </span>
+          <div className={`text-3xl sm:text-4xl font-extrabold font-display mt-1 ${criticalCount > 0 ? 'text-red-600' : 'text-slate-900'}`}>
+            {criticalCount} <span className="text-sm font-semibold text-slate-400">Critical/High</span>
+          </div>
+          <span className="text-xs text-slate-500 font-medium mt-0.5 block">
+            {criticalCount > 0 ? 'Review flagged feeders below' : 'All lines nominal'}
           </span>
         </div>
 
         <div className="border-t border-slate-200/80 lg:border-t-0 pt-4 lg:pt-0 lg:border-l lg:border-slate-200/80 lg:pl-8">
           <span className="text-[11px] uppercase font-bold text-slate-400 tracking-wider block">
-            Feeders At Risk
+            Highest Forecast Peak
           </span>
-          <div className={`text-3xl sm:text-4xl font-extrabold font-display mt-1 ${!isMitigated && criticalCount > 0 ? 'text-red-600' : 'text-slate-900'}`}>
-            {isMitigated ? '0' : criticalCount} <span className="text-sm font-semibold text-slate-400">Critical</span>
+          <div className="text-3xl sm:text-4xl font-extrabold text-slate-900 font-display mt-1">
+            {highestForecastFeeder ? formatMw(highestForecastFeeder.peakForecastMw) : '--'}
           </div>
           <span className="text-xs text-slate-500 font-medium mt-0.5 block">
-            {isMitigated ? 'All lines nominal' : 'Feeder F07 requires dispatch'}
+            {highestForecastFeeder ? `Feeder ${highestForecastFeeder.id}` : 'No data'}
           </span>
         </div>
 
         <div className="border-t border-slate-200/80 lg:border-t-0 pt-4 lg:pt-0 border-l border-slate-200/80 pl-6 lg:pl-8">
           <span className="text-[11px] uppercase font-bold text-slate-400 tracking-wider block">
-            Peak Forecast
+            Grid Status
           </span>
-          <div className="text-3xl sm:text-4xl font-extrabold text-slate-900 font-display mt-1">
-            {isMitigated ? '95' : (f07 ? f07.peakForecastMw : '110')} <span className="text-sm font-semibold text-slate-400">MW</span>
+          <div className={`text-3xl sm:text-4xl font-extrabold font-display mt-1 ${criticalCount > 0 ? 'text-red-600' : 'text-emerald-700'}`}>
+            {criticalCount > 0 ? 'Attention' : 'Stable'}
           </div>
-          <span className={`text-xs font-medium mt-0.5 block ${isMitigated ? 'text-emerald-700' : 'text-red-600'}`}>
-            {isMitigated ? 'Safe • 5.0 MW margin' : `+${((f07 ? f07.peakForecastMw : 110) - (f07 ? f07.capacityMw : 100)).toFixed(1)} MW over ${f07 ? f07.capacityMw : 100} MW limit`}
+          <span className="text-xs text-slate-500 font-medium mt-0.5 block">
+            Based on current ML Stress Engine output
           </span>
         </div>
       </div>
@@ -274,25 +356,14 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
         {/* 1. Feeder Risk Ranking */}
         <CollapsibleSection
           title="FEEDER RISK RANKING"
-          subtitle="All 10 monitored feeders prioritized by predictive thermal stress"
+          subtitle={`All ${feeders.length} monitored feeders prioritized by predictive thermal stress`}
           badge={
             <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
-              10 FEEDERS
+              {feeders.length} FEEDERS
             </span>
           }
           isOpen={activeSection === 'ranking'}
           onToggle={() => toggleSection('ranking')}
-          headerRight={
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onNavigateToIntelligence('F07');
-              }}
-              className="text-xs font-bold text-teal-800 hover:text-teal-900 hover:underline cursor-pointer"
-            >
-              View F07 Details →
-            </button>
-          }
         >
           {/* Desktop & Tablet Table (md+) */}
           <div className="hidden md:block overflow-x-auto pt-2">
@@ -309,7 +380,6 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {sortedFeeders.map((f) => {
-                  const isF07 = f.id === 'F07';
                   const isSelected = f.id === selectedFeederId;
                   return (
                     <tr
@@ -327,7 +397,11 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
                           <span className="text-sm text-slate-500 font-normal truncate max-w-[160px]">
                             {f.name}
                           </span>
-                          {isF07 && <span className="w-2 h-2 rounded-full bg-red-600" />}
+                          {!isMlFeeder(f.id) && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-semibold" title="Legacy feeder -- not part of the F01-F10 ML feeder universe; forecast is on a different scale">
+                              legacy
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="py-3.5">
@@ -337,7 +411,7 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
                         {formatMw(f.currentLoadMw)}
                       </td>
                       <td className="py-3.5 text-[15px] text-slate-600 font-medium">
-                        {f.capacityMw} MW
+                        {f.capacityMw.toFixed(1)} MW
                       </td>
                       <td className="py-3.5">
                         <StressScoreGauge score={f.stressScore} size="sm" showLabel={false} />
@@ -364,7 +438,6 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
           {/* Mobile Stacked Feeder Rows (< md) */}
           <div className="md:hidden space-y-3 pt-2">
             {sortedFeeders.map((f) => {
-              const isF07 = f.id === 'F07';
               const isSelected = f.id === selectedFeederId;
               return (
                 <div
@@ -384,7 +457,6 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
                       <span className="text-xs text-slate-500 font-medium truncate max-w-[170px]">
                         {f.name}
                       </span>
-                      {isF07 && <span className="w-2 h-2 rounded-full bg-red-600 flex-shrink-0" />}
                     </div>
                     <RiskBadge level={f.riskLevel} size="sm" />
                   </div>
@@ -395,7 +467,7 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
                         Load / Capacity
                       </span>
                       <span className="text-sm font-bold text-slate-900 font-display mt-0.5 block">
-                        {formatMw(f.currentLoadMw)} / {f.capacityMw} MW
+                        {formatMw(f.currentLoadMw)} / {f.capacityMw.toFixed(1)} MW
                       </span>
                     </div>
 
@@ -431,30 +503,29 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
 
         {/* 2. System Load Forecast */}
         <CollapsibleSection
-          title="SYSTEM LOAD FORECAST"
-          subtitle="60-minute demand trajectory for Feeder F07 with capacity breach horizon"
-          badge={
-            <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
-              Breach expected in 38 min
-            </span>
-          }
+          title="FEATURED FEEDER LOAD FORECAST"
+          subtitle={featuredFeeder ? `24-hour ML demand trajectory for feeder ${featuredFeeder.id}` : 'No featured feeder currently'}
           isOpen={activeSection === 'forecast'}
           onToggle={() => toggleSection('forecast')}
         >
           <div className="pt-2">
-            <ForecastHorizonChart
-              data={forecastData}
-              capacityMw={100}
-              showMitigated={isMitigated}
-              highlightBreach={!isMitigated}
-            />
+            {featuredFeeder ? (
+              <ForecastHorizonChart
+                data={forecastData}
+                capacityMw={featuredFeeder.capacityMw}
+                highlightBreach={featuredFeeder.riskLevel === 'CRITICAL' || featuredFeeder.riskLevel === 'HIGH'}
+                timeToOverloadHours={featuredFeeder.timeToOverloadHours}
+              />
+            ) : (
+              <div className="text-xs text-slate-400 py-6 text-center">No feeder currently featured.</div>
+            )}
           </div>
         </CollapsibleSection>
 
         {/* 3. Recent Events */}
         <CollapsibleSection
           title="RECENT EVENTS"
-          subtitle="Real-time chronological SCADA event notifications"
+          subtitle="Illustrative demo event log (not sourced from a live backend alert feed -- see Remaining Issues)"
           badge={
             <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
               {MOCK_RECENT_EVENTS.length} LOGGED

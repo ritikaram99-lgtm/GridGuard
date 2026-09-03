@@ -6,13 +6,13 @@ import { BackendCopilotResponse } from '../types';
 interface CopilotDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  activeFeederId?: string;
+  activeFeederId: string;
 }
 
 export const CopilotDrawer: React.FC<CopilotDrawerProps> = ({
   isOpen,
   onClose,
-  activeFeederId = 'F07',
+  activeFeederId,
 }) => {
   const [selectedQuestion, setSelectedQuestion] = useState<number | null>(0);
   const [copilotData, setCopilotData] = useState<BackendCopilotResponse | null>(null);

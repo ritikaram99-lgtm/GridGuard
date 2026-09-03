@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Header } from '../components/Header';
 import { CopilotDrawer } from '../components/CopilotDrawer';
-import { ScenarioId } from '../types';
+import { ScenarioId, GlobalGridStatus } from '../types';
 
 export type ScreenTab = 'command_center' | 'feeder_intelligence' | 'prevention_center' | 'what_if_simulator';
 
@@ -11,6 +11,7 @@ interface DashboardLayoutProps {
   activeScenarioId: ScenarioId;
   onScenarioChange: (id: ScenarioId) => void;
   isMitigated: boolean;
+  gridStatus: GlobalGridStatus;
   selectedFeederId: string;
   children: React.ReactNode;
 }
@@ -21,6 +22,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   activeScenarioId,
   onScenarioChange,
   isMitigated,
+  gridStatus,
   selectedFeederId,
   children,
 }) => {
@@ -34,6 +36,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         activeScenarioId={activeScenarioId}
         onScenarioChange={onScenarioChange}
         isMitigated={isMitigated}
+        gridStatus={gridStatus}
         selectedFeederId={selectedFeederId}
         onOpenCopilot={() => setIsCopilotOpen(true)}
       />

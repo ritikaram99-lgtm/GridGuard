@@ -95,7 +95,7 @@ class DemoService:
         copilot = copilot_service.get_copilot_explanation(fid)
 
         # 7. Evaluate Operational Outcome
-        before_load = max(forecast.m15, forecast.m30, forecast.m45, forecast.m60)
+        before_load = forecast_service.get_forecast_peak(forecast)
         after_load = simulation.simulated_load
         capacity = feeder.capacity
 

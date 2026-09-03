@@ -1,5 +1,27 @@
 export type RiskLevel = 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
 
+// Global header status tier, distinct from per-feeder RiskLevel: a feeder can
+// be HIGH/CRITICAL stress (utilization/headroom-driven) while its forecast
+// trajectory never actually crosses capacity (time_to_overload stays null) --
+// that's ELEVATED, not OVERLOAD. Only a real predicted capacity crossing
+// (the existing, unmodified ML Stress Engine's time_to_overload field) is
+// OVERLOAD. "Mitigated" is tracked separately (see isMitigated elsewhere).
+export type GlobalGridStatus = 'NOMINAL' | 'ELEVATED' | 'OVERLOAD';
+
+// Mirrors the backend's KNOWN_ML_FEEDER_IDS (ml_adapter_service.py): F01-F10
+// are the authoritative ML feeder universe (synthetic feeders displayed as
+// Delhi-area locations, real per-feeder ML forecast + Stress Engine -- see
+// data/delhiFeederLabels.ts for the display-name/coordinate mapping). Any
+// other id (e.g. legacy 'F12')
+// is a non-ML feeder on an incomparable scale (e.g. F12's forecast is the
+// raw NATIONAL demand, not a feeder-level allocation -- see forecast_service.py) --
+// aggregate dashboard comparisons across feeders should use this to avoid
+// mixing those two categories.
+const ML_FEEDER_ID_PATTERN = /^F(0[1-9]|10)$/;
+export function isMlFeeder(feederId: string): boolean {
+  return ML_FEEDER_ID_PATTERN.test(feederId);
+}
+
 export interface Substation {
   id: string;
   name: string;
@@ -9,7 +31,7 @@ export interface Substation {
 }
 
 export interface Feeder {
-  id: string; // e.g. 'F07'
+  id: string; // e.g. 'F07' (one of the 10 ML feeders F01-F10, or legacy 'F12')
   name: string;
   substationId: string;
   substationName: string;
@@ -17,18 +39,35 @@ export interface Feeder {
   capacityMw: number;
   stressScore: number; // 0 - 100
   riskLevel: RiskLevel;
-  timeToOverloadMin: number | null; // e.g. 38, or null if safe
+  riskSource?: string | null; // 'ml_stress_engine' | 'legacy_formula'
+  timeToOverloadMin: number | null; // converted from time_to_overload_hours; hour-resolution estimate
+  timeToOverloadHours: number | null; // real ML Stress Engine resolution
   peakForecastMw: number;
-  voltageKv: number;
+  voltagePu: number; // backend voltage is per-unit (~0.85-1.05); no kV class is defined by the ML pipeline
   coordinates: [number, number][]; // Lat/Lng polyline
 }
 
 export interface ForecastPoint {
-  timeStep: 'Current' | '+15 min' | '+30 min' | '+45 min' | '+60 min';
+  timeStep: string; // e.g. 'Current', 'h+1'..'h+24', or a What-If preview label
+  timestamp: string | null; // real ISO-ish timestamp when known (from hourly[]), else null
   actualLoadMw: number | null;
-  forecastLoadMw: number;
+  forecastLoadMw: number | null; // nullable: ML feeders carry no sub-hourly points, only hourly[]
   capacityLimitMw: number;
-  mitigatedLoadMw?: number;
+  mitigatedLoadMw?: number | null;
+}
+
+export interface ForecastMeta {
+  source?: string; // 'ml' | 'mock'
+  scope?: string; // 'feeder' | 'national'
+  forecastMethod?: string | null; // e.g. 'BIAS_CORRECTED_DIRECT_XGBOOST' | 'PREVIOUS_DAY_FALLBACK'
+  regimeStatus?: string | null; // 'NORMAL' | 'SHIFT'
+  regimeScore?: number | null;
+  originTimestamp?: string | null;
+}
+
+export interface ForecastResult {
+  points: ForecastPoint[];
+  meta: ForecastMeta;
 }
 
 export interface ShapContributor {
@@ -39,32 +78,35 @@ export interface ShapContributor {
   description: string;
 }
 
-export type ResourceType = 'EV' | 'BATTERY' | 'INDUSTRIAL';
+export type ResourceType = 'EV' | 'BATTERY' | 'INDUSTRIAL' | 'OTHER';
 
 export interface FlexibleResource {
   id: string;
   type: ResourceType;
-  name: string;
-  substationAssigned: string;
+  actionType: string; // raw backend action_type, e.g. 'EV', 'BATTERY', 'INDUSTRIAL'
+  name: string; // generic label derived from action_type -- not a fabricated named asset
+  feederLabel: string; // real feeder name/id this action applies to
   maxReductionMw: number;
   selectedReductionMw: number;
-  isEnabled: boolean;
-  estimatedCostDemo: number; // NOTE: Explicit synthetic/demo value index
+  durationHours?: number | null;
+  isEnabled: boolean; // whether included in the (client-side) dispatch selection
+  estimatedCostDemo: number; // real `cost` field from action_details -- itself a backend synthetic index, not frontend-fabricated
   disruptionLevel: 'None' | 'Minimal' | 'High';
   summary: string;
 }
 
-export type ScenarioId = 'summer_peak' | 'solar_drop' | 'industrial_anomaly' | 'baseline';
+export type ScenarioId = 'live' | 'single_feeder_alert';
 
 export interface GridScenario {
   id: ScenarioId;
   name: string;
   tagline: string;
   description: string;
-  ambientTempC: number;
-  evDemandPct: number;
-  solarAvailabilityPct: number;
-  primaryAlertFeederId: string;
+  // Real ISO forecast-origin timestamp this scenario pins the whole app to,
+  // or null for "live" (the backend's default/latest valid origin). See
+  // data/scenarios.ts -- this is a real historical ML origin, not fabricated
+  // data, selected because it naturally produces the described risk profile.
+  origin: string | null;
 }
 
 export interface WhatIfParams {
@@ -80,7 +122,8 @@ export interface WhatIfRecalculationResult {
   peakForecastMw: number;
   stressScore: number;
   riskLevel: RiskLevel;
-  timeToOverloadMin: number | null;
+  timeToOverloadMin: number | null; // converted from timeToOverloadHours (x60); hour-resolution estimate
+  timeToOverloadHours: number | null; // real ML Simulation Engine resolution, null if no crossing predicted
   forecastPoints: ForecastPoint[];
   recommendedReductionMw: number;
   recommendedCombination: string;
@@ -98,18 +141,33 @@ export interface FeederIntelligenceData {
 export interface PreventionPlan {
   feederId: string;
   feederName: string;
+  originTimestamp?: string | null;
   currentLoadMw: number;
   capacityMw: number;
-  predictedPeakMw: number;
-  minimumRequiredReductionMw: number;
-  targetSafetyReductionMw: number;
-  targetSafetyLoadMw: number;
-  resources: FlexibleResource[];
-  totalSelectedReductionMw: number;
-  totalEstimatedCostDemo: number;
-  isOverloadAvoided: boolean;
-  expectedPeakAfterInterventionMw: number;
-  counterfactualPoints: ForecastPoint[];
+  predictedPeakMw: number; // backend predicted_load
+  requiredReductionMw: number; // backend required_reduction
+  predictedAfterMw: number; // backend predicted_after (all recommended actions applied)
+  status: string; // 'NO_ACTION_REQUIRED' | 'PREVENTED' | 'REDUCED_NOT_PREVENTED' | 'INSUFFICIENT_FLEXIBILITY' | 'DURATION_LIMITED' | legacy
+  baselineRiskLevel?: string | null;
+  projectedRiskLevel?: string | null;
+  baselineStressScore?: number | null;
+  projectedStressScore?: number | null;
+  overloadAvoided?: boolean | null;
+  actionRequired?: boolean | null;
+  interventionCost?: number | null;
+  reason?: string | null;
+  candidatesEvaluated?: number | null;
+  source?: string | null;
+  alternatives?: Array<{
+    label: string;
+    cost: number;
+    total_reduction_mw: number;
+    projected_risk: string;
+    overload_after: boolean;
+    resolved: boolean;
+  }> | null;
+  resources: FlexibleResource[]; // from action_details[]; empty if backend recommends none
+  forecastPoints: ForecastPoint[]; // real forecast trajectory (getForecast), for chart baseline
 }
 
 // Live FastAPI Backend Types
@@ -118,7 +176,7 @@ export interface BackendFeeder {
   name: string;
   capacity: number;
   current_load: number;
-  voltage: number;
+  voltage: number; // per-unit, not kV
   location: {
     latitude: number;
     longitude: number;
@@ -127,12 +185,26 @@ export interface BackendFeeder {
   };
 }
 
+export interface BackendHourlyForecastPoint {
+  horizon: number; // 1-24
+  timestamp: string;
+  load_mw: number;
+}
+
 export interface BackendForecast {
-  '15m': number;
-  '30m': number;
-  '45m': number;
-  '60m': number;
-  source?: string;
+  // Legacy 15/30/45/60-minute fields. Non-null only for source='mock' (legacy
+  // feeder ids); always null for the real ML feeders (F01-F10, source='ml').
+  '15m': number | null;
+  '30m': number | null;
+  '45m': number | null;
+  '60m': number | null;
+  source?: string; // 'ml' | 'mock'
+  hourly?: BackendHourlyForecastPoint[] | null; // genuine 24-point hourly forecast, source='ml' only
+  origin_timestamp?: string | null;
+  forecast_method?: string | null; // 'BIAS_CORRECTED_DIRECT_XGBOOST' | 'PREVIOUS_DAY_FALLBACK'
+  regime_status?: string | null; // 'NORMAL' | 'SHIFT'
+  regime_score?: number | null;
+  scope?: string | null; // 'feeder' | 'national'
 }
 
 export interface BackendContributor {
@@ -143,19 +215,23 @@ export interface BackendContributor {
 export interface BackendRisk {
   score: number;
   level: RiskLevel;
-  time_to_overload: number | null;
+  time_to_overload: number | null; // minutes; hour-resolution estimate for ML feeders
+  time_to_overload_hours?: number | null; // real ML Stress Engine resolution
+  source?: string | null; // 'ml_stress_engine' | 'legacy_formula'
   contributors?: BackendContributor[];
 }
 
 export interface BackendActionDetail {
   action_type: string;
   load_reduction: number;
+  duration_hours?: number | null;
   cost: number;
   disruption: number;
 }
 
 export interface BackendRecommendation {
   feeder_id: string;
+  origin_timestamp?: string | null;
   predicted_load: number;
   capacity: number;
   required_reduction: number;
@@ -165,6 +241,14 @@ export interface BackendRecommendation {
   expected_load_after: number;
   status: string;
   action_details: BackendActionDetail[];
+  baseline_risk_level?: string | null;
+  projected_risk_level?: string | null;
+  overload_avoided?: boolean | null;
+  action_required?: boolean | null;
+  intervention_cost?: number | null;
+  reason?: string | null;
+  source?: string | null;
+  alternatives?: any[] | null;
 }
 
 export interface BackendIntelligence {
@@ -188,6 +272,7 @@ export interface BackendIntelligence {
 
 export interface BackendSimulationResponse {
   feeder_id: string;
+  origin_timestamp?: string | null;
   forecast_peak: number;
   capacity: number;
   changes: {
@@ -201,6 +286,23 @@ export interface BackendSimulationResponse {
   total_reduction: number;
   simulated_load: number;
   status: string;
+  scenario_peak_load_mw?: number | null;
+  baseline_risk?: string | null;
+  baseline_stress_score?: number | null;
+  baseline_time_to_overload?: number | null; // hours; null if no crossing predicted
+  scenario_risk?: string | null;
+  scenario_stress_score?: number | null;
+  scenario_time_to_overload?: number | null; // hours; null if no crossing predicted
+  final_risk?: string | null;
+  final_stress_score?: number | null;
+  final_time_to_overload?: number | null; // hours; null if no crossing predicted
+  overload_before?: boolean | null;
+  overload_after_scenario?: boolean | null;
+  overload_after?: boolean | null;
+  overload_avoided?: boolean | null;
+  load_change_mw?: Record<string, number> | null;
+  actions_applied?: any[] | null;
+  source?: string | null;
   without_action_forecast?: any;
   with_action_forecast?: any;
   risk?: any;

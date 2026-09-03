@@ -9,3 +9,4 @@ pandas>=1.5.0
 numpy>=1.21.0
 scikit-learn>=1.0.0
 xgboost>=1.6.0
+matplotlib>=3.5.0  # transitive import-time dependency of ml/src/rolling_integration.py (module-level import; used only in its own __main__ plotting block, not by ml_adapter_service's call path, but Python still requires it to be installed to import the module)

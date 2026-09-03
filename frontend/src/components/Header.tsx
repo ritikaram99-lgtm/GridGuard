@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { ScenarioId } from '../types';
+import { ScenarioId, GlobalGridStatus } from '../types';
 import { MOCK_SCENARIOS } from '../data/scenarios';
 import { ScreenTab } from '../layouts/DashboardLayout';
-import { Zap, HelpCircle, Menu, X, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Zap, HelpCircle, Menu, X, ArrowRight, ShieldCheck, AlertCircle, AlertTriangle } from 'lucide-react';
 
 interface HeaderProps {
   activeScreen: ScreenTab;
@@ -10,6 +10,7 @@ interface HeaderProps {
   activeScenarioId: ScenarioId;
   onScenarioChange: (id: ScenarioId) => void;
   isMitigated: boolean;
+  gridStatus: GlobalGridStatus;
   selectedFeederId: string;
   onOpenCopilot: () => void;
 }
@@ -20,17 +21,17 @@ export const Header: React.FC<HeaderProps> = ({
   activeScenarioId,
   onScenarioChange,
   isMitigated,
-  selectedFeederId,
+  gridStatus,
   onOpenCopilot,
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navItems: { id: ScreenTab; label: string; hasWarning?: boolean }[] = [
     { id: 'command_center', label: 'Overview' },
-    { 
-      id: 'feeder_intelligence', 
-      label: 'Feeder Intelligence', 
-      hasWarning: selectedFeederId === 'F07' && !isMitigated 
+    {
+      id: 'feeder_intelligence',
+      label: 'Feeder Intelligence',
+      hasWarning: gridStatus !== 'NOMINAL' && !isMitigated
     },
     { id: 'prevention_center', label: 'Prevention' },
     { id: 'what_if_simulator', label: 'What-If' },
@@ -98,14 +99,26 @@ export const Header: React.FC<HeaderProps> = ({
           {isMitigated ? (
             <div className="flex items-center space-x-1.5 px-2 sm:px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-              <span className="hidden sm:inline">Nominal (Mitigated)</span>
+              <span className="hidden sm:inline">Mitigated</span>
               <span className="sm:hidden font-bold">Safe</span>
             </div>
-          ) : (
+          ) : gridStatus === 'OVERLOAD' ? (
             <div className="flex items-center space-x-1.5 px-2 sm:px-2.5 py-1 rounded-full bg-red-50 border border-red-200 text-red-700 text-xs font-semibold">
               <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse"></span>
-              <span className="hidden sm:inline">1 Overload Risk (F07)</span>
-              <span className="sm:hidden font-bold">F07 Risk</span>
+              <span className="hidden sm:inline">Overload Risk Detected</span>
+              <span className="sm:hidden font-bold">Risk</span>
+            </div>
+          ) : gridStatus === 'ELEVATED' ? (
+            <div className="flex items-center space-x-1.5 px-2 sm:px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+              <span className="hidden sm:inline">Elevated Grid Stress</span>
+              <span className="sm:hidden font-bold">Elevated</span>
+            </div>
+          ) : (
+            <div className="flex items-center space-x-1.5 px-2 sm:px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+              <span className="hidden sm:inline">Nominal</span>
+              <span className="sm:hidden font-bold">Nominal</span>
             </div>
           )}
 
@@ -207,12 +220,22 @@ export const Header: React.FC<HeaderProps> = ({
                 {isMitigated ? (
                   <span className="text-emerald-700 font-bold flex items-center space-x-1">
                     <ShieldCheck className="w-3.5 h-3.5" />
-                    <span>Nominal / Mitigated</span>
+                    <span>Mitigated</span>
                   </span>
-                ) : (
+                ) : gridStatus === 'OVERLOAD' ? (
                   <span className="text-red-700 font-bold flex items-center space-x-1">
                     <AlertCircle className="w-3.5 h-3.5" />
-                    <span>Feeder F07 Overload Risk</span>
+                    <span>Overload Risk Detected</span>
+                  </span>
+                ) : gridStatus === 'ELEVATED' ? (
+                  <span className="text-amber-800 font-bold flex items-center space-x-1">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    <span>Elevated Grid Stress</span>
+                  </span>
+                ) : (
+                  <span className="text-emerald-700 font-bold flex items-center space-x-1">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>Nominal</span>
                   </span>
                 )}
               </div>

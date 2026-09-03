@@ -5,6 +5,7 @@ import { CommandCenter } from './pages/CommandCenter';
 import { FeederIntelligence } from './pages/FeederIntelligence';
 import { PreventionCenter } from './pages/PreventionCenter';
 import { WhatIfSimulator } from './pages/WhatIfSimulator';
+import { GlobalGridStatus } from './types';
 import { AlertTriangle, RotateCcw } from 'lucide-react';
 
 export function App() {
@@ -20,10 +21,34 @@ export function App() {
     isLoading,
     error,
     isMitigated,
+    mitigatedFeederId,
     applyMitigation,
     resetMitigation,
     reloadFeeders,
   } = useGridState();
+
+  // Global header status tier, data-driven, not tied to any hardcoded feeder.
+  // Distinguishes "stress is elevated" from "a real overload is predicted":
+  // - OVERLOAD: some feeder's forecast trajectory actually crosses capacity
+  //   (the existing ML Stress Engine's time_to_overload is non-null).
+  // - ELEVATED: some feeder is HIGH/CRITICAL stress but no crossing is
+  //   predicted (e.g. utilization/headroom-driven, like F06 at 63/100 with
+  //   TTO "Safe (Nominal)") -- this used to be misreported as an overload.
+  // - NOMINAL: neither.
+  // The currently-mitigated feeder (if any) is excluded from this scan, same
+  // as before.
+  const activeFeeders = feeders.filter(f => f.id !== mitigatedFeederId);
+  const hasOverloadCrossing = activeFeeders.some(
+    f => f.timeToOverloadHours != null || f.timeToOverloadMin != null
+  );
+  const hasElevatedStress = activeFeeders.some(
+    f => f.riskLevel === 'CRITICAL' || f.riskLevel === 'HIGH'
+  );
+  const globalGridStatus: GlobalGridStatus = hasOverloadCrossing
+    ? 'OVERLOAD'
+    : hasElevatedStress
+    ? 'ELEVATED'
+    : 'NOMINAL';
 
   const handleNavigateToIntelligence = (feederId: string) => {
     setSelectedFeederId(feederId);
@@ -41,6 +66,7 @@ export function App() {
       activeScenarioId={activeScenarioId}
       onScenarioChange={changeScenario}
       isMitigated={isMitigated}
+      gridStatus={globalGridStatus}
       selectedFeederId={selectedFeederId}
     >
       {isLoading ? (
@@ -76,7 +102,7 @@ export function App() {
               onSelectFeeder={setSelectedFeederId}
               onNavigateToIntelligence={handleNavigateToIntelligence}
               onNavigateToPrevention={handleNavigateToPrevention}
-              isMitigated={isMitigated}
+              mitigatedFeederId={mitigatedFeederId}
             />
           )}
 
@@ -86,15 +112,15 @@ export function App() {
               allFeeders={feeders}
               onSelectFeeder={setSelectedFeederId}
               onNavigateToPrevention={handleNavigateToPrevention}
-              isMitigated={isMitigated}
+              isMitigated={isMitigated && activeFeeder?.id === mitigatedFeederId}
             />
           )}
 
           {activeScreen === 'prevention_center' && (
             <PreventionCenter
               feederId={selectedFeederId}
-              isMitigated={isMitigated}
-              onApplyMitigation={applyMitigation}
+              isMitigated={isMitigated && selectedFeederId === mitigatedFeederId}
+              onApplyMitigation={() => applyMitigation(selectedFeederId)}
               onResetMitigation={resetMitigation}
             />
           )}

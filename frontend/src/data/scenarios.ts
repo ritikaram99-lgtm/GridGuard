@@ -1,44 +1,24 @@
 import { GridScenario } from '../types';
 
+// Real, functional scenario selector: choosing a scenario pins every
+// ML-backed request to a specific real historical forecast origin (see
+// gridService.setActiveOrigin), so the whole app (feeder list, map, risk,
+// recommendations) reflects that ONE real, already-computed ML moment.
+// Not a fabricated "what-if" -- every number shown is the backend's real
+// output for that timestamp.
 export const MOCK_SCENARIOS: GridScenario[] = [
   {
-    id: 'summer_peak',
-    name: 'Summer Peak / EV Surge',
-    tagline: 'Primary Hackathon Demo',
-    description: 'High ambient heatwave (36°C) combined with concurrent commuter EV fleet charging. Feeder F07 predicted to hit 108 MW (+8 MW overload in 38 min).',
-    ambientTempC: 36,
-    evDemandPct: 145,
-    solarAvailabilityPct: 40,
-    primaryAlertFeederId: 'F07',
+    id: 'live',
+    name: 'Live (Latest Forecast)',
+    tagline: 'Default',
+    description: 'The backend\'s latest valid forecast origin -- the default view.',
+    origin: null,
   },
   {
-    id: 'solar_drop',
-    name: 'Sudden Solar Cloud Cover',
-    tagline: 'Renewable Drop Scenario',
-    description: 'Rapid marine layer cloud cover drops distributed rooftop solar output by 70%, shifting residential load directly onto distribution feeders.',
-    ambientTempC: 28,
-    evDemandPct: 100,
-    solarAvailabilityPct: 20,
-    primaryAlertFeederId: 'F07',
-  },
-  {
-    id: 'industrial_anomaly',
-    name: 'Industrial Shift Spike',
-    tagline: 'Harbor Grid Stress',
-    description: 'Shipyard cold ironing and cold-storage refrigeration ramp simultaneously on Substation Charlie feeders.',
-    ambientTempC: 24,
-    evDemandPct: 90,
-    solarAvailabilityPct: 80,
-    primaryAlertFeederId: 'F09',
-  },
-  {
-    id: 'baseline',
-    name: 'Normal Baseline Grid',
-    tagline: 'Optimal Operating State',
-    description: 'Mild weather (22°C), normal EV depot schedule, high solar generation. All network feeders operate safely below 75% capacity.',
-    ambientTempC: 22,
-    evDemandPct: 100,
-    solarAvailabilityPct: 85,
-    primaryAlertFeederId: 'F07',
+    id: 'single_feeder_alert',
+    name: 'Demo Replay',
+    tagline: '2020-01-20 14:00 Origin',
+    description: 'Historical ML forecast origin (2020-01-20 14:00) where feeder F06 is evaluated as HIGH risk (stress score 62.61), triggering the Action → Simulation → Prevention pipeline.',
+    origin: '2020-01-20 14:00:00',
   },
 ];
