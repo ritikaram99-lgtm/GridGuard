@@ -1,0 +1,306 @@
+{
+  "period": {
+    "start": "2020-01-01 00:00:00",
+    "end": "2020-06-26 00:00:00",
+    "n_origins": 4249,
+    "n_feeder_time_observations": 42490
+  },
+  "overall_stats": {
+    "count": 42490.0,
+    "mean": 27.56148459224119,
+    "std": 12.550363168183733,
+    "min": 3.3967165516966227,
+    "25%": 18.21509109897474,
+    "50%": 26.830635071311438,
+    "75%": 37.1593612138648,
+    "max": 62.891977752934544
+  },
+  "overall_risk_distribution_pct": {
+    "LOW": 58.5879,
+    "MODERATE": 41.3721,
+    "HIGH": 0.04,
+    "CRITICAL": 0.0
+  },
+  "per_feeder_stats": {
+    "F01": {
+      "mean": 24.098,
+      "median": 22.3917,
+      "std": 9.9648,
+      "min": 10.0843,
+      "max": 53.8165
+    },
+    "F02": {
+      "mean": 25.8241,
+      "median": 23.9955,
+      "std": 10.6785,
+      "min": 10.8066,
+      "max": 57.6711
+    },
+    "F03": {
+      "mean": 20.7161,
+      "median": 13.8692,
+      "std": 14.9473,
+      "min": 3.5261,
+      "max": 57.0305
+    },
+    "F04": {
+      "mean": 19.9559,
+      "median": 13.3602,
+      "std": 14.3988,
+      "min": 3.3967,
+      "max": 54.9376
+    },
+    "F05": {
+      "mean": 36.6982,
+      "median": 35.9214,
+      "std": 7.9926,
+      "min": 21.7014,
+      "max": 58.1474
+    },
+    "F06": {
+      "mean": 38.7492,
+      "median": 37.929,
+      "std": 8.4393,
+      "min": 22.9142,
+      "max": 61.3971
+    },
+    "F07": {
+      "mean": 27.5519,
+      "median": 29.2121,
+      "std": 11.8317,
+      "min": 8.5783,
+      "max": 51.7055
+    },
+    "F08": {
+      "mean": 25.8216,
+      "median": 27.3775,
+      "std": 11.0887,
+      "min": 8.0396,
+      "max": 48.4583
+    },
+    "F09": {
+      "mean": 27.6215,
+      "median": 24.0178,
+      "std": 9.8484,
+      "min": 13.1116,
+      "max": 60.7861
+    },
+    "F10": {
+      "mean": 28.5784,
+      "median": 24.8498,
+      "std": 10.1896,
+      "min": 13.5658,
+      "max": 62.892
+    }
+  },
+  "per_feeder_risk_distribution_pct": {
+    "F01": {
+      "LOW": 77.8301,
+      "MODERATE": 22.1699,
+      "HIGH": 0.0,
+      "CRITICAL": 0.0
+    },
+    "F02": {
+      "LOW": 74.8176,
+      "MODERATE": 25.1824,
+      "HIGH": 0.0,
+      "CRITICAL": 0.0
+    },
+    "F03": {
+      "LOW": 71.2874,
+      "MODERATE": 28.7126,
+      "HIGH": 0.0,
+      "CRITICAL": 0.0
+    },
+    "F04": {
+      "LOW": 72.37,
+      "MODERATE": 27.63,
+      "HIGH": 0.0,
+      "CRITICAL": 0.0
+    },
+    "F05": {
+      "LOW": 25.5354,
+      "MODERATE": 74.4646,
+      "HIGH": 0.0,
+      "CRITICAL": 0.0
+    },
+    "F06": {
+      "LOW": 15.0624,
+      "MODERATE": 84.7023,
+      "HIGH": 0.2353,
+      "CRITICAL": 0.0
+    },
+    "F07": {
+      "LOW": 51.6592,
+      "MODERATE": 48.3408,
+      "HIGH": 0.0,
+      "CRITICAL": 0.0
+    },
+    "F08": {
+      "LOW": 56.1779,
+      "MODERATE": 43.8221,
+      "HIGH": 0.0,
+      "CRITICAL": 0.0
+    },
+    "F09": {
+      "LOW": 71.3344,
+      "MODERATE": 28.642,
+      "HIGH": 0.0235,
+      "CRITICAL": 0.0
+    },
+    "F10": {
+      "LOW": 69.8047,
+      "MODERATE": 30.0541,
+      "HIGH": 0.1412,
+      "CRITICAL": 0.0
+    }
+  },
+  "correlations": {
+    "current_utilization_vs_stress": {
+      "pearson_r": 0.9707075016347694,
+      "pearson_p": 0.0,
+      "spearman_rho": 0.971112676684035,
+      "spearman_p": 0.0
+    },
+    "forecast_utilization_vs_stress": {
+      "pearson_r": 0.9751231465652221,
+      "pearson_p": 0.0,
+      "spearman_rho": 0.9773900750690521,
+      "spearman_p": 0.0
+    }
+  },
+  "monotonicity_checks": {
+    "increasing_current_utilization": {
+      "passed": true,
+      "min_diff": 0.0
+    },
+    "increasing_forecast_utilization": {
+      "passed": true,
+      "min_diff": 0.0
+    },
+    "increasing_positive_trajectory_slope": {
+      "passed": true,
+      "min_diff": 0.0
+    },
+    "worsening_voltage": {
+      "passed": true,
+      "min_diff": 0.0
+    },
+    "reducing_headroom_via_capacity": {
+      "passed": true,
+      "min_diff": 0.07045850041613022
+    }
+  },
+  "all_monotonicity_passed": true,
+  "headroom_current_utilization_identity": {
+    "identical_in_rolled_data": true,
+    "max_abs_diff_rolled_data": 1.3877787807814457e-16,
+    "max_abs_diff_algebraic_sweep": 1.1102230246251565e-16,
+    "combined_effective_weight": 0.44999999999999996
+  },
+  "component_examples": {
+    "LOW": {
+      "origin_datetime": "2020-02-28 06:00:00",
+      "feeder_id": "F08",
+      "feeder_type": "MIXED",
+      "stress_score": 20.057325453923653,
+      "current_utilization": 0.3014405113661344,
+      "forecast_utilization": 0.21641674808158684,
+      "voltage_pu": 1.02,
+      "component_raw_values": {
+        "comp_current_utilization": 0.3014405113661344,
+        "comp_forecast_utilization": 0.21641674808158684,
+        "comp_trajectory_slope": 0.0,
+        "comp_voltage_stress": 0.0,
+        "comp_headroom": 0.30144051136613437
+      },
+      "component_score_contributions": {
+        "comp_current_utilization": 0.10550417897814704,
+        "comp_forecast_utilization": 0.06492502442447605,
+        "comp_trajectory_slope": 0.0,
+        "comp_voltage_stress": 0.0,
+        "comp_headroom": 0.030144051136613437
+      },
+      "component_pct_of_score": {
+        "comp_current_utilization": 0.5260131976245522,
+        "comp_forecast_utilization": 0.3236973173398614,
+        "comp_trajectory_slope": 0.0,
+        "comp_voltage_stress": 0.0,
+        "comp_headroom": 0.1502894850355863
+      }
+    },
+    "MODERATE": {
+      "origin_datetime": "2020-03-05 07:00:00",
+      "feeder_id": "F05",
+      "feeder_type": "INDUSTRIAL",
+      "stress_score": 39.086908165173156,
+      "current_utilization": 0.5286782898575514,
+      "forecast_utilization": 0.5098795040527783,
+      "voltage_pu": 1.017132171014245,
+      "component_raw_values": {
+        "comp_current_utilization": 0.5286782898575514,
+        "comp_forecast_utilization": 0.5098795040527783,
+        "comp_trajectory_slope": 0.0,
+        "comp_voltage_stress": 0.0,
+        "comp_headroom": 0.5286782898575514
+      },
+      "component_score_contributions": {
+        "comp_current_utilization": 0.18503740145014297,
+        "comp_forecast_utilization": 0.15296385121583347,
+        "comp_trajectory_slope": 0.0,
+        "comp_voltage_stress": 0.0,
+        "comp_headroom": 0.05286782898575514
+      },
+      "component_pct_of_score": {
+        "comp_current_utilization": 0.4733999442171618,
+        "comp_forecast_utilization": 0.3913429288636492,
+        "comp_trajectory_slope": 0.0,
+        "comp_voltage_stress": 0.0,
+        "comp_headroom": 0.1352571269191891
+      }
+    },
+    "HIGH": {
+      "origin_datetime": "2020-01-20 20:00:00",
+      "feeder_id": "F09",
+      "feeder_type": "EV_HEAVY",
+      "stress_score": 60.78614029837232,
+      "current_utilization": 0.8199040903435665,
+      "forecast_utilization": 0.7963485410970607,
+      "voltage_pu": 0.9880095909656433,
+      "component_raw_values": {
+        "comp_current_utilization": 0.8199040903435665,
+        "comp_forecast_utilization": 0.7963485410970607,
+        "comp_trajectory_slope": 0.0,
+        "comp_voltage_stress": 0.0,
+        "comp_headroom": 0.8199040903435665
+      },
+      "component_score_contributions": {
+        "comp_current_utilization": 0.28696643162024826,
+        "comp_forecast_utilization": 0.2389045623291182,
+        "comp_trajectory_slope": 0.0,
+        "comp_voltage_stress": 0.0,
+        "comp_headroom": 0.08199040903435666
+      },
+      "component_pct_of_score": {
+        "comp_current_utilization": 0.47209187852963985,
+        "comp_forecast_utilization": 0.3930247276047487,
+        "comp_trajectory_slope": 0.0,
+        "comp_voltage_stress": 0.0,
+        "comp_headroom": 0.13488339386561138
+      }
+    },
+    "CRITICAL": null
+  },
+  "overload": {
+    "n_overload_predicted": 0,
+    "pct_overload_predicted": 0.0,
+    "correlation_time_to_overload_vs_stress": null,
+    "n_counterexamples_short_tto_low_stress": 0
+  },
+  "highest_stress_observation": {
+    "origin_datetime": "2020-01-20 20:00:00",
+    "feeder_id": "F10",
+    "stress_score": 62.891977752934544,
+    "risk_level": "HIGH"
+  }
+}

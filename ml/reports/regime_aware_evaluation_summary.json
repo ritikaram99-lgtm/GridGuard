@@ -1,0 +1,19 @@
+{
+  "n_test_origins": 4249,
+  "n_shift_classified": 798,
+  "pct_shift_classified": 18.780889621087315,
+  "thresholds": {
+    "lower_threshold": -1.3607364107541395,
+    "lower_percentile": 1.0,
+    "n_train_val_hours_used": 43608,
+    "train_val_range": [
+      "2015-01-03 01:00:00",
+      "2019-12-31 23:00:00"
+    ]
+  },
+  "pre_covid_false_positive_rate_pct": 0.0,
+  "covid_onset_detection_rate_pct": 28.40868636525454,
+  "first_shift_classified_at": "2020-04-05 16:00:00",
+  "metrics_by_horizon_csv": "ml/data/regime_aware_metrics_by_horizon.csv",
+  "regime_timeline_csv": "ml/data/regime_classification_timeline.csv"
+}

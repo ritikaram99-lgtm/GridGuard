@@ -1,0 +1,113 @@
+{
+  "n_scenarios": 8,
+  "n_baseline_overload": 6,
+  "n_overload_avoided": 4,
+  "n_insufficient_flexibility_cases": 2,
+  "avg_mw_reduction_where_action_taken": 32.142857142857146,
+  "scenario_results": [
+    {
+      "scenario": "SAFE",
+      "baseline_peak_mw": 60.0,
+      "baseline_risk": "MODERATE",
+      "baseline_overload": false,
+      "action_required": false,
+      "actions": "NONE",
+      "total_reduction_mw": 0.0,
+      "intervention_cost": 0.0,
+      "projected_load_mw": 60.0,
+      "projected_risk": "MODERATE",
+      "overload_avoided": true
+    },
+    {
+      "scenario": "EV_ONLY_SUFFICIENT",
+      "baseline_peak_mw": 112.0,
+      "baseline_risk": "HIGH",
+      "baseline_overload": true,
+      "action_required": true,
+      "actions": "BATTERY",
+      "total_reduction_mw": 20.0,
+      "intervention_cost": 0.5,
+      "projected_load_mw": 92.0,
+      "projected_risk": "MODERATE",
+      "overload_avoided": true
+    },
+    {
+      "scenario": "BATTERY_ONLY_SUFFICIENT",
+      "baseline_peak_mw": 108.0,
+      "baseline_risk": "HIGH",
+      "baseline_overload": true,
+      "action_required": true,
+      "actions": "BATTERY",
+      "total_reduction_mw": 20.0,
+      "intervention_cost": 0.5,
+      "projected_load_mw": 90.0,
+      "projected_risk": "MODERATE",
+      "overload_avoided": true
+    },
+    {
+      "scenario": "INDUSTRIAL_ONLY_SUFFICIENT",
+      "baseline_peak_mw": 108.0,
+      "baseline_risk": "HIGH",
+      "baseline_overload": true,
+      "action_required": true,
+      "actions": "BATTERY",
+      "total_reduction_mw": 20.0,
+      "intervention_cost": 0.5,
+      "projected_load_mw": 90.0,
+      "projected_risk": "MODERATE",
+      "overload_avoided": true
+    },
+    {
+      "scenario": "COMBINED_REQUIRED",
+      "baseline_peak_mw": 130.0,
+      "baseline_risk": "HIGH",
+      "baseline_overload": true,
+      "action_required": true,
+      "actions": "BATTERY+INDUSTRIAL",
+      "total_reduction_mw": 45.0,
+      "intervention_cost": 3.5,
+      "projected_load_mw": 94.72222222222223,
+      "projected_risk": "MODERATE",
+      "overload_avoided": true
+    },
+    {
+      "scenario": "INSUFFICIENT_FLEXIBILITY",
+      "baseline_peak_mw": 175.0,
+      "baseline_risk": "HIGH",
+      "baseline_overload": true,
+      "action_required": true,
+      "actions": "EV+BATTERY+INDUSTRIAL",
+      "total_reduction_mw": 60.0,
+      "intervention_cost": 4.5,
+      "projected_load_mw": 115.0,
+      "projected_risk": "MODERATE",
+      "overload_avoided": false
+    },
+    {
+      "scenario": "DURATION_LIMITED",
+      "baseline_peak_mw": 140.0,
+      "baseline_risk": "HIGH",
+      "baseline_overload": true,
+      "action_required": true,
+      "actions": "EV+INDUSTRIAL",
+      "total_reduction_mw": 40.0,
+      "intervention_cost": 4.0,
+      "projected_load_mw": 102.0,
+      "projected_risk": "HIGH",
+      "overload_avoided": false
+    },
+    {
+      "scenario": "HIGH_RISK_NO_OVERLOAD",
+      "baseline_peak_mw": 92.0,
+      "baseline_risk": "HIGH",
+      "baseline_overload": false,
+      "action_required": true,
+      "actions": "BATTERY",
+      "total_reduction_mw": 20.0,
+      "intervention_cost": 0.5,
+      "projected_load_mw": 92.0,
+      "projected_risk": "HIGH",
+      "overload_avoided": false
+    }
+  ]
+}

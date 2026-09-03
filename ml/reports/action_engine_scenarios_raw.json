@@ -1,0 +1,257 @@
+{
+  "A_SAFE": {
+    "purpose": "Feeder stays well under capacity throughout -- verifies action_required=False and no unnecessary intervention.",
+    "baseline": {
+      "peak_load_mw": 70.0,
+      "capacity_mw": 100.0,
+      "peak_utilization": 0.7,
+      "current_load_mw": 50.0,
+      "forecast_load_mw": 60.0,
+      "current_utilization": 0.5,
+      "forecast_utilization": 0.6,
+      "voltage_pu": 1.02,
+      "stress_score": 42.0,
+      "risk_level": "MODERATE",
+      "overload_predicted": false,
+      "time_to_overload_hours": null
+    },
+    "recommendation": {
+      "action_required": false,
+      "reason": "Feeder is not predicted to overload and risk level is LOW/MODERATE; no intervention recommended."
+    },
+    "n_alternatives": 0
+  },
+  "B_SMALL_OVERLOAD": {
+    "purpose": "Small, short overshoot -- verifies exactly one resource (the cheapest sufficient one) is recommended, not a needless combination.",
+    "baseline": {
+      "peak_load_mw": 118.0,
+      "capacity_mw": 100.0,
+      "peak_utilization": 1.18,
+      "current_load_mw": 90.0,
+      "forecast_load_mw": 85.0,
+      "current_utilization": 0.9,
+      "forecast_utilization": 0.85,
+      "voltage_pu": 0.98,
+      "stress_score": 66.0,
+      "risk_level": "HIGH",
+      "overload_predicted": true,
+      "time_to_overload_hours": 0.7142857141666666
+    },
+    "recommendation": {
+      "action_required": true,
+      "overload_prevented": true,
+      "actions": [
+        {
+          "resource": "BATTERY",
+          "mw": 20.0,
+          "duration_hours": 3.5,
+          "disruption_cost": 0.5
+        }
+      ],
+      "action_label": "BATTERY",
+      "total_reduction_mw": 20.0,
+      "total_disruption_cost": 0.5,
+      "resulting_peak_load_mw": 98.0,
+      "resulting_utilization": 0.98,
+      "resulting_stress_score": 59.24999999999999,
+      "resulting_risk_level": "MODERATE",
+      "overload_predicted": false,
+      "time_to_overload_hours": null
+    },
+    "n_alternatives": 7
+  },
+  "C_LARGER_OVERLOAD": {
+    "purpose": "Larger overshoot exceeding any single resource's MW capacity -- verifies a combination is correctly required and the cheapest sufficient combination is chosen.",
+    "baseline": {
+      "peak_load_mw": 130.0,
+      "capacity_mw": 100.0,
+      "peak_utilization": 1.3,
+      "current_load_mw": 95.0,
+      "forecast_load_mw": 90.0,
+      "current_utilization": 0.95,
+      "forecast_utilization": 0.9,
+      "voltage_pu": 0.975,
+      "stress_score": 69.75,
+      "risk_level": "HIGH",
+      "overload_predicted": true,
+      "time_to_overload_hours": 0.42857142833333334
+    },
+    "recommendation": {
+      "action_required": true,
+      "overload_prevented": true,
+      "actions": [
+        {
+          "resource": "BATTERY",
+          "mw": 20.0,
+          "duration_hours": 3.5,
+          "disruption_cost": 0.5
+        },
+        {
+          "resource": "INDUSTRIAL",
+          "mw": 25.0,
+          "duration_hours": 6.0,
+          "disruption_cost": 3.0
+        }
+      ],
+      "action_label": "BATTERY+INDUSTRIAL",
+      "total_reduction_mw": 45.0,
+      "total_disruption_cost": 3.5,
+      "resulting_peak_load_mw": 94.72222222222223,
+      "resulting_utilization": 0.9472222222222223,
+      "resulting_stress_score": 55.50000000000001,
+      "resulting_risk_level": "MODERATE",
+      "overload_predicted": false,
+      "time_to_overload_hours": null
+    },
+    "n_alternatives": 7
+  },
+  "D_EXCEEDS_ALL_FLEXIBILITY": {
+    "purpose": "Overshoot exceeding even all three resources combined (max 60 MW) -- verifies the engine correctly reports insufficient flexibility rather than pretending success.",
+    "baseline": {
+      "peak_load_mw": 175.0,
+      "capacity_mw": 100.0,
+      "peak_utilization": 1.75,
+      "current_load_mw": 90.0,
+      "forecast_load_mw": 85.0,
+      "current_utilization": 0.9,
+      "forecast_utilization": 0.85,
+      "voltage_pu": 0.98,
+      "stress_score": 66.0,
+      "risk_level": "HIGH",
+      "overload_predicted": true,
+      "time_to_overload_hours": 0.23529411749999998
+    },
+    "recommendation": {
+      "action_required": true,
+      "overload_prevented": false,
+      "actions": [
+        {
+          "resource": "EV",
+          "mw": 15.0,
+          "duration_hours": 4.0,
+          "disruption_cost": 1.0
+        },
+        {
+          "resource": "BATTERY",
+          "mw": 20.0,
+          "duration_hours": 3.5,
+          "disruption_cost": 0.5
+        },
+        {
+          "resource": "INDUSTRIAL",
+          "mw": 25.0,
+          "duration_hours": 6.0,
+          "disruption_cost": 3.0
+        }
+      ],
+      "action_label": "EV+BATTERY+INDUSTRIAL",
+      "total_reduction_mw": 60.0,
+      "total_disruption_cost": 4.5,
+      "resulting_peak_load_mw": 115.0,
+      "resulting_utilization": 1.15,
+      "resulting_stress_score": 47.25,
+      "resulting_risk_level": "MODERATE",
+      "overload_predicted": true,
+      "time_to_overload_hours": 1.6470588233333334,
+      "required_reduction_mw": 75.0,
+      "max_feasible_reduction_mw": 60.0,
+      "remaining_overload_mw": 15.0,
+      "limitation": "Available synthetic flexible resources (EV + Battery + Industrial, fully deployed) cannot fully prevent the predicted overload for this feeder/trajectory -- either the required magnitude exceeds combined resource capacity, or the overload persists longer than the resources' maximum durations. The best available action is reported, but it does NOT eliminate the overload."
+    },
+    "n_alternatives": 7
+  },
+  "E_MULTIPLE_FEASIBLE_SOLUTIONS": {
+    "purpose": "Overshoot small enough that EV, Battery, AND Industrial would each individually suffice -- verifies the engine picks the lowest-disruption option (Battery) rather than any other sufficient one.",
+    "baseline": {
+      "peak_load_mw": 109.0,
+      "capacity_mw": 100.0,
+      "peak_utilization": 1.09,
+      "current_load_mw": 92.0,
+      "forecast_load_mw": 88.0,
+      "current_utilization": 0.92,
+      "forecast_utilization": 0.88,
+      "voltage_pu": 0.978,
+      "stress_score": 67.80000000000001,
+      "risk_level": "HIGH",
+      "overload_predicted": true,
+      "time_to_overload_hours": 0.9411764705555555
+    },
+    "recommendation": {
+      "action_required": true,
+      "overload_prevented": true,
+      "actions": [
+        {
+          "resource": "BATTERY",
+          "mw": 20.0,
+          "duration_hours": 3.5,
+          "disruption_cost": 0.5
+        }
+      ],
+      "action_label": "BATTERY",
+      "total_reduction_mw": 20.0,
+      "total_disruption_cost": 0.5,
+      "resulting_peak_load_mw": 92.0,
+      "resulting_utilization": 0.92,
+      "resulting_stress_score": 61.199999999999996,
+      "resulting_risk_level": "HIGH",
+      "overload_predicted": false,
+      "time_to_overload_hours": null
+    },
+    "n_alternatives": 7
+  },
+  "F_REDUCES_BUT_NOT_ELIMINATES": {
+    "purpose": "Sustained overload that outlasts every resource's maximum duration -- verifies the engine reports overload_prevented=False and shows a genuinely reduced (not unchanged) peak, distinguishing a DURATION-limited failure from Scenario D's MAGNITUDE-limited failure.",
+    "baseline": {
+      "peak_load_mw": 140.0,
+      "capacity_mw": 100.0,
+      "peak_utilization": 1.4,
+      "current_load_mw": 140.0,
+      "forecast_load_mw": 102.0,
+      "current_utilization": 1.4,
+      "forecast_utilization": 1.02,
+      "voltage_pu": 0.93,
+      "stress_score": 78.99999999999999,
+      "risk_level": "HIGH",
+      "overload_predicted": true,
+      "time_to_overload_hours": 0.0
+    },
+    "recommendation": {
+      "action_required": true,
+      "overload_prevented": false,
+      "actions": [
+        {
+          "resource": "EV",
+          "mw": 15.0,
+          "duration_hours": 4.0,
+          "disruption_cost": 1.0
+        },
+        {
+          "resource": "BATTERY",
+          "mw": 20.0,
+          "duration_hours": 3.5,
+          "disruption_cost": 0.5
+        },
+        {
+          "resource": "INDUSTRIAL",
+          "mw": 25.0,
+          "duration_hours": 6.0,
+          "disruption_cost": 3.0
+        }
+      ],
+      "action_label": "EV+BATTERY+INDUSTRIAL",
+      "total_reduction_mw": 60.0,
+      "total_disruption_cost": 4.5,
+      "resulting_peak_load_mw": 102.0,
+      "resulting_utilization": 1.02,
+      "resulting_stress_score": 69.3,
+      "resulting_risk_level": "HIGH",
+      "overload_predicted": true,
+      "time_to_overload_hours": 6.92,
+      "required_reduction_mw": 40.0,
+      "max_feasible_reduction_mw": 60.0,
+      "remaining_overload_mw": 0.0,
+      "limitation": "Available synthetic flexible resources (EV + Battery + Industrial, fully deployed) cannot fully prevent the predicted overload for this feeder/trajectory -- either the required magnitude exceeds combined resource capacity, or the overload persists longer than the resources' maximum durations. The best available action is reported, but it does NOT eliminate the overload."
+    },
+    "n_alternatives": 7
+  }
+}

@@ -1,0 +1,226 @@
+{
+  "feeder_id": "F10",
+  "feeder_type": "EV_HEAVY",
+  "baseline": {
+    "peak_load_mw": 7.483474169336814,
+    "capacity_mw": 5.756518591797549,
+    "peak_utilization": 1.3,
+    "current_load_mw": 5.468692662207672,
+    "forecast_load_mw": 5.180866732617794,
+    "current_utilization": 0.95,
+    "forecast_utilization": 0.8999999999999999,
+    "voltage_pu": 0.975,
+    "stress_score": 69.74999999999999,
+    "risk_level": "HIGH",
+    "overload_predicted": true,
+    "time_to_overload_hours": 0.42857142833333334
+  },
+  "resolution_note": "Crossing time is linearly interpolated between adjacent hourly trajectory points; the underlying national demand model only produces hourly-resolution values, so this is an hour-level estimate, not a sub-hourly-accurate prediction.",
+  "recommendation": {
+    "action_required": true,
+    "overload_prevented": true,
+    "actions": [
+      {
+        "resource": "BATTERY",
+        "mw": 1.1513037183595098,
+        "duration_hours": 3.5000000000000004,
+        "disruption_cost": 0.5
+      },
+      {
+        "resource": "INDUSTRIAL",
+        "mw": 1.4391296479493874,
+        "duration_hours": 6.0,
+        "disruption_cost": 3.0
+      }
+    ],
+    "action_label": "BATTERY+INDUSTRIAL",
+    "total_reduction_mw": 2.590433366308897,
+    "total_disruption_cost": 3.5,
+    "resulting_peak_load_mw": 5.452702332786012,
+    "resulting_utilization": 0.9472222222222221,
+    "resulting_stress_score": 55.49999999999999,
+    "resulting_risk_level": "MODERATE",
+    "overload_predicted": false,
+    "time_to_overload_hours": null
+  },
+  "alternatives": [
+    {
+      "label": "BATTERY+INDUSTRIAL",
+      "actions": [
+        {
+          "resource": "BATTERY",
+          "mw": 1.1513037183595098,
+          "duration_hours": 3.5000000000000004,
+          "disruption_cost": 0.5
+        },
+        {
+          "resource": "INDUSTRIAL",
+          "mw": 1.4391296479493874,
+          "duration_hours": 6.0,
+          "disruption_cost": 3.0
+        }
+      ],
+      "total_reduction_mw": 2.590433366308897,
+      "total_disruption_cost": 3.5,
+      "resulting_peak_load_mw": 5.452702332786012,
+      "resulting_utilization": 0.9472222222222221,
+      "resulting_current_utilization": 0.5,
+      "resulting_forecast_utilization": 0.8999999999999999,
+      "resulting_stress_score": 55.49999999999999,
+      "resulting_risk_level": "MODERATE",
+      "overload_predicted": false,
+      "time_to_overload_hours": null
+    },
+    {
+      "label": "EV+INDUSTRIAL",
+      "actions": [
+        {
+          "resource": "EV",
+          "mw": 0.8634777887696324,
+          "duration_hours": 4.0,
+          "disruption_cost": 1.0
+        },
+        {
+          "resource": "INDUSTRIAL",
+          "mw": 1.4391296479493874,
+          "duration_hours": 6.0,
+          "disruption_cost": 3.0
+        }
+      ],
+      "total_reduction_mw": 2.3026074367190197,
+      "total_disruption_cost": 4.0,
+      "resulting_peak_load_mw": 5.452702332786012,
+      "resulting_utilization": 0.9472222222222221,
+      "resulting_current_utilization": 0.5499999999999999,
+      "resulting_forecast_utilization": 0.8999999999999999,
+      "resulting_stress_score": 56.99999999999999,
+      "resulting_risk_level": "MODERATE",
+      "overload_predicted": false,
+      "time_to_overload_hours": null
+    },
+    {
+      "label": "EV+BATTERY+INDUSTRIAL",
+      "actions": [
+        {
+          "resource": "EV",
+          "mw": 0.8634777887696324,
+          "duration_hours": 4.0,
+          "disruption_cost": 1.0
+        },
+        {
+          "resource": "BATTERY",
+          "mw": 1.1513037183595098,
+          "duration_hours": 3.5000000000000004,
+          "disruption_cost": 0.5
+        },
+        {
+          "resource": "INDUSTRIAL",
+          "mw": 1.4391296479493874,
+          "duration_hours": 6.0,
+          "disruption_cost": 3.0
+        }
+      ],
+      "total_reduction_mw": 3.4539111550785297,
+      "total_disruption_cost": 4.5,
+      "resulting_peak_load_mw": 5.452702332786012,
+      "resulting_utilization": 0.9472222222222221,
+      "resulting_current_utilization": 0.3499999999999999,
+      "resulting_forecast_utilization": 0.8999999999999999,
+      "resulting_stress_score": 50.99999999999999,
+      "resulting_risk_level": "MODERATE",
+      "overload_predicted": false,
+      "time_to_overload_hours": null
+    },
+    {
+      "label": "BATTERY",
+      "actions": [
+        {
+          "resource": "BATTERY",
+          "mw": 1.1513037183595098,
+          "duration_hours": 3.5000000000000004,
+          "disruption_cost": 0.5
+        }
+      ],
+      "total_reduction_mw": 1.1513037183595098,
+      "total_disruption_cost": 0.5,
+      "resulting_peak_load_mw": 6.8118803336271,
+      "resulting_utilization": 1.1833333333333333,
+      "resulting_current_utilization": 0.7499999999999999,
+      "resulting_forecast_utilization": 0.8999999999999999,
+      "resulting_stress_score": 62.999999999999986,
+      "resulting_risk_level": "HIGH",
+      "overload_predicted": true,
+      "time_to_overload_hours": 2.142857142777778
+    },
+    {
+      "label": "EV",
+      "actions": [
+        {
+          "resource": "EV",
+          "mw": 0.8634777887696324,
+          "duration_hours": 4.0,
+          "disruption_cost": 1.0
+        }
+      ],
+      "total_reduction_mw": 0.8634777887696324,
+      "total_disruption_cost": 1.0,
+      "resulting_peak_load_mw": 6.619996380567182,
+      "resulting_utilization": 1.15,
+      "resulting_current_utilization": 0.7999999999999999,
+      "resulting_forecast_utilization": 0.8999999999999999,
+      "resulting_stress_score": 64.49999999999999,
+      "resulting_risk_level": "HIGH",
+      "overload_predicted": true,
+      "time_to_overload_hours": 1.7142857141666668
+    },
+    {
+      "label": "EV+BATTERY",
+      "actions": [
+        {
+          "resource": "EV",
+          "mw": 0.8634777887696324,
+          "duration_hours": 4.0,
+          "disruption_cost": 1.0
+        },
+        {
+          "resource": "BATTERY",
+          "mw": 1.1513037183595098,
+          "duration_hours": 3.5000000000000004,
+          "disruption_cost": 0.5
+        }
+      ],
+      "total_reduction_mw": 2.0147815071291424,
+      "total_disruption_cost": 1.5,
+      "resulting_peak_load_mw": 6.140286497917386,
+      "resulting_utilization": 1.0666666666666667,
+      "resulting_current_utilization": 0.6,
+      "resulting_forecast_utilization": 0.8999999999999999,
+      "resulting_stress_score": 58.5,
+      "resulting_risk_level": "MODERATE",
+      "overload_predicted": true,
+      "time_to_overload_hours": 3.6
+    },
+    {
+      "label": "INDUSTRIAL",
+      "actions": [
+        {
+          "resource": "INDUSTRIAL",
+          "mw": 1.4391296479493874,
+          "duration_hours": 6.0,
+          "disruption_cost": 3.0
+        }
+      ],
+      "total_reduction_mw": 1.4391296479493874,
+      "total_disruption_cost": 3.0,
+      "resulting_peak_load_mw": 6.044344521387426,
+      "resulting_utilization": 1.0499999999999998,
+      "resulting_current_utilization": 0.7000000000000001,
+      "resulting_forecast_utilization": 0.8999999999999999,
+      "resulting_stress_score": 61.499999999999986,
+      "resulting_risk_level": "HIGH",
+      "overload_predicted": true,
+      "time_to_overload_hours": 2.571428571388889
+    }
+  ],
+  "NOTE": "CONTROLLED SIMULATION: F10 real capacity_mw used with a DELIBERATELY CONSTRUCTED overload trajectory for demonstration purposes. This is NOT a real historical F10 event or real Panama feeder measurement."
+}
