@@ -1,20 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Feeder, ForecastPoint, ShapContributor } from '../types';
+import { Feeder, ForecastPoint, ForecastMeta, ShapContributor } from '../types';
 import { gridService } from '../api/gridService';
 import { ForecastHorizonChart } from '../charts/ForecastHorizonChart';
 import { ShapContributorsBarChart } from '../charts/ShapContributorsBarChart';
-import { RiskBadge } from '../components/RiskBadge';
 import { CollapsibleSection } from '../components/CollapsibleSection';
 import { formatMw, formatTto } from '../utils/formatters';
-import { 
-  ArrowRight, 
-  ShieldAlert, 
-  CheckCircle2, 
-  AlertCircle,
-  HelpCircle, 
-  Gauge, 
+import {
+  ArrowRight,
+  ShieldAlert,
+  CheckCircle2,
   Layers,
-  Info
 } from 'lucide-react';
 
 interface FeederIntelligenceProps {
@@ -27,48 +22,45 @@ interface FeederIntelligenceProps {
 
 export const FeederIntelligence: React.FC<FeederIntelligenceProps> = ({
   feeder,
+  allFeeders,
   onSelectFeeder,
   onNavigateToPrevention,
   isMitigated,
 }) => {
   const [forecast, setForecast] = useState<ForecastPoint[]>([]);
+  const [forecastMeta, setForecastMeta] = useState<ForecastMeta>({});
   const [shapContributors, setShapContributors] = useState<ShapContributor[]>([]);
+  const [riskSource, setRiskSource] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Progressive disclosure states (all collapsed by default)
-  const [openSection, setOpenSection] = useState<'why_matters' | 'telemetry' | 'technical' | null>(null);
+  const [openSection, setOpenSection] = useState<'why_matters' | 'telemetry' | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     async function loadData() {
       setIsLoading(true);
       try {
-        const [fcData, explainData] = await Promise.all([
+        const [fcResult, explainData] = await Promise.all([
           gridService.getForecast(feeder.id),
           gridService.getExplainability(feeder.id),
         ]);
-
-        if (isMitigated && feeder.id === 'F07') {
-          setForecast(
-            fcData.map(pt => ({
-              ...pt,
-              mitigatedLoadMw: pt.timeStep === 'Current' ? 97 : pt.timeStep === '+15 min' ? 96 : pt.timeStep === '+30 min' ? 95 : 94,
-            }))
-          );
-        } else {
-          setForecast(fcData);
-        }
-
+        if (cancelled) return;
+        setForecast(fcResult.points);
+        setForecastMeta(fcResult.meta);
         setShapContributors(explainData.contributors);
+        setRiskSource(explainData.source);
       } catch (err) {
         console.error('Error loading feeder intelligence:', err);
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     }
     loadData();
-  }, [feeder.id, isMitigated]);
+    return () => { cancelled = true; };
+  }, [feeder.id]);
 
-  const toggleSection = (section: 'why_matters' | 'telemetry' | 'technical') => {
+  const toggleSection = (section: 'why_matters' | 'telemetry') => {
     setOpenSection(prev => (prev === section ? null : section));
   };
 
@@ -83,20 +75,20 @@ export const FeederIntelligence: React.FC<FeederIntelligenceProps> = ({
             <span>Feeder Intelligence & Diagnostics</span>
           </div>
 
-          {/* Quick Feeder Switcher */}
+          {/* Feeder Switcher -- built from the real feeder list, not a hardcoded set */}
           <div className="flex items-center space-x-1 overflow-x-auto no-scrollbar pb-1 flex-nowrap max-w-full">
             <span className="text-xs text-slate-400 font-semibold mr-1 flex-shrink-0">Switch:</span>
-            {['F07', 'F03', 'F09', 'F04', 'F01'].map((fid) => (
+            {allFeeders.map((f) => (
               <button
-                key={fid}
-                onClick={() => onSelectFeeder(fid)}
+                key={f.id}
+                onClick={() => onSelectFeeder(f.id)}
                 className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer flex-shrink-0 ${
-                  feeder.id === fid
+                  feeder.id === f.id
                     ? 'bg-[#073B3A] text-white shadow-xs'
                     : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
                 }`}
               >
-                {fid}
+                {f.id}
               </button>
             ))}
           </div>
@@ -104,9 +96,11 @@ export const FeederIntelligence: React.FC<FeederIntelligenceProps> = ({
 
         {/* Large Confident Statement */}
         <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight font-display leading-[1.15] sm:leading-[1.1] max-w-3xl">
-          {isMitigated && feeder.id === 'F07' ? (
-            <span className="text-emerald-800">Overload mitigated. Operating at 94 MW.</span>
-          ) : feeder.timeToOverloadMin ? (
+          {isMitigated ? (
+            <span className="text-emerald-800">Mitigation dispatched for this feeder.</span>
+          ) : feeder.timeToOverloadHours != null ? (
+            <span>Overload risk in <span className="text-red-600">~{feeder.timeToOverloadHours.toFixed(1)} hours</span>.</span>
+          ) : feeder.timeToOverloadMin != null ? (
             <span>Overload risk in <span className="text-red-600">{formatTto(feeder.timeToOverloadMin)}</span>.</span>
           ) : (
             <span className="text-emerald-800">Operating nominal. Within safe capacity limits.</span>
@@ -114,21 +108,21 @@ export const FeederIntelligence: React.FC<FeederIntelligenceProps> = ({
         </h1>
 
         <p className="text-sm sm:text-base text-slate-500 font-normal">
-          {feeder.name} • Substation {feeder.substationName} • {feeder.voltageKv} kV Circuit
+          {feeder.name} • {feeder.voltagePu.toFixed(2)} pu
         </p>
       </div>
 
-      {/* 2. LARGE TYPOGRAPHY METRICS WITH THIN DIVIDERS (2-Col Mobile, 5-Col Desktop) */}
+      {/* 2. LARGE TYPOGRAPHY METRICS WITH THIN DIVIDERS */}
       <div className="py-6 border-y border-slate-200/80 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6">
         <div>
           <span className="text-[11px] uppercase font-bold text-slate-400 tracking-wider block">
             Current Load
           </span>
           <div className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 font-display mt-1">
-            {feeder.currentLoadMw} <span className="text-sm font-semibold text-slate-400">MW</span>
+            {formatMw(feeder.currentLoadMw)}
           </div>
           <span className="text-xs text-slate-500 font-medium mt-0.5 block">
-            Actual T0 telemetry
+            Latest ML allocation
           </span>
         </div>
 
@@ -137,10 +131,10 @@ export const FeederIntelligence: React.FC<FeederIntelligenceProps> = ({
             Capacity
           </span>
           <div className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 font-display mt-1">
-            {feeder.capacityMw} <span className="text-sm font-semibold text-slate-400">MW</span>
+            {feeder.capacityMw.toFixed(1)} <span className="text-sm font-semibold text-slate-400">MW</span>
           </div>
           <span className="text-xs text-slate-500 font-medium mt-0.5 block">
-            Continuous rating
+            ML-derived
           </span>
         </div>
 
@@ -149,12 +143,12 @@ export const FeederIntelligence: React.FC<FeederIntelligenceProps> = ({
             Predicted Peak
           </span>
           <div className={`text-2xl sm:text-3xl lg:text-4xl font-extrabold font-display mt-1 ${feeder.peakForecastMw > feeder.capacityMw ? 'text-red-600' : 'text-slate-900'}`}>
-            {feeder.peakForecastMw} <span className={`text-sm font-semibold ${feeder.peakForecastMw > feeder.capacityMw ? 'text-red-400' : 'text-slate-400'}`}>MW</span>
+            {formatMw(feeder.peakForecastMw)}
           </div>
           <span className={`text-xs font-medium mt-0.5 block ${feeder.peakForecastMw > feeder.capacityMw ? 'text-red-600' : 'text-slate-500'}`}>
             {feeder.peakForecastMw > feeder.capacityMw
-              ? `+${(feeder.peakForecastMw - feeder.capacityMw).toFixed(1)} MW over rating`
-              : 'Within thermal rating'}
+              ? `+${(feeder.peakForecastMw - feeder.capacityMw).toFixed(1)} MW over capacity`
+              : 'Within capacity'}
           </span>
         </div>
 
@@ -174,11 +168,13 @@ export const FeederIntelligence: React.FC<FeederIntelligenceProps> = ({
           <span className="text-[11px] uppercase font-bold text-slate-400 tracking-wider block">
             Time to Overload
           </span>
-          <div className={`text-2xl sm:text-3xl lg:text-4xl font-extrabold font-display mt-1 ${feeder.timeToOverloadMin ? 'text-red-600' : 'text-emerald-700'}`}>
-            {isMitigated && feeder.id === 'F07' ? 'SAFE' : formatTto(feeder.timeToOverloadMin)}
+          <div className={`text-2xl sm:text-3xl lg:text-4xl font-extrabold font-display mt-1 ${feeder.timeToOverloadHours != null || feeder.timeToOverloadMin != null ? 'text-red-600' : 'text-emerald-700'}`}>
+            {feeder.timeToOverloadHours != null
+              ? `~${feeder.timeToOverloadHours.toFixed(1)}h`
+              : formatTto(feeder.timeToOverloadMin)}
           </div>
           <span className="text-xs text-slate-500 font-medium mt-0.5 block">
-            {isMitigated && feeder.id === 'F07' ? 'Mitigation active' : feeder.timeToOverloadMin ? 'Action countdown' : 'No overload risk'}
+            {feeder.timeToOverloadHours != null ? 'Hour-resolution estimate' : feeder.timeToOverloadMin != null ? 'Action countdown' : 'No overload risk'}
           </span>
         </div>
       </div>
@@ -188,10 +184,12 @@ export const FeederIntelligence: React.FC<FeederIntelligenceProps> = ({
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
           <div>
             <h2 className="text-base font-bold text-slate-900 font-display">
-              60-Minute Predictive Demand Curve
+              Predictive Demand Curve
             </h2>
             <p className="text-xs text-slate-500">
-              Discrete steps: Current, +15m, +30m, +45m, +60m vs {feeder.capacityMw} MW thermal limit
+              {forecastMeta.source === 'ml'
+                ? `24-hour ML forecast vs ${feeder.capacityMw.toFixed(1)} MW capacity`
+                : `Legacy 15/30/45/60-minute forecast vs ${feeder.capacityMw.toFixed(1)} MW capacity`}
             </p>
           </div>
 
@@ -207,7 +205,7 @@ export const FeederIntelligence: React.FC<FeederIntelligenceProps> = ({
           ) : (
             <span className="px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center space-x-1.5">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Mitigated Curve Active</span>
+              <span>Mitigation Dispatched</span>
             </span>
           )}
         </div>
@@ -217,12 +215,23 @@ export const FeederIntelligence: React.FC<FeederIntelligenceProps> = ({
             Loading feeder forecast telemetry...
           </div>
         ) : (
-          <ForecastHorizonChart
-            data={forecast}
-            capacityMw={feeder.capacityMw}
-            showMitigated={isMitigated}
-            highlightBreach={!isMitigated && feeder.riskLevel === 'CRITICAL'}
-          />
+          <>
+            <ForecastHorizonChart
+              data={forecast}
+              capacityMw={feeder.capacityMw}
+              showMitigated={isMitigated}
+              highlightBreach={!isMitigated && (feeder.riskLevel === 'CRITICAL' || feeder.riskLevel === 'HIGH')}
+              timeToOverloadHours={feeder.timeToOverloadHours}
+            />
+            {forecastMeta.source === 'ml' && (
+              <div className="flex flex-wrap gap-x-6 gap-y-1.5 text-xs text-slate-500 pt-3 border-t border-slate-100">
+                <span><strong className="text-slate-700 font-semibold">Method:</strong> {forecastMeta.forecastMethod ?? 'n/a'}</span>
+                <span><strong className="text-slate-700 font-semibold">Regime:</strong> {forecastMeta.regimeStatus ?? 'n/a'}</span>
+                <span><strong className="text-slate-700 font-semibold">Scope:</strong> {forecastMeta.scope ?? 'n/a'}</span>
+                <span><strong className="text-slate-700 font-semibold">Origin:</strong> {forecastMeta.originTimestamp ?? 'n/a'}</span>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -230,13 +239,17 @@ export const FeederIntelligence: React.FC<FeederIntelligenceProps> = ({
       <div className="bg-white border border-slate-200/90 rounded-2xl p-6 sm:p-7 shadow-xs space-y-4">
         <div className="border-b border-slate-100 pb-3">
           <div className="text-[11px] uppercase font-bold text-teal-800 tracking-wider">
-            Model Explainability
+            Risk Attribution
           </div>
           <h2 className="text-base sm:text-lg font-bold text-slate-900 font-display mt-0.5">
             Why Feeder {feeder.id} is {feeder.riskLevel === 'CRITICAL' || feeder.riskLevel === 'HIGH' ? 'at Risk' : 'Nominal'}
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Ranked root-cause SHAP attribution drivers computed from live SCADA and telemetry features
+            {riskSource === 'ml_stress_engine'
+              ? 'Weighted point contributions from the real ML Grid Stress Engine'
+              : riskSource === 'legacy_formula'
+              ? 'Weighted contributions from the legacy risk formula'
+              : 'Risk contributor breakdown'}
           </p>
         </div>
 
@@ -249,93 +262,62 @@ export const FeederIntelligence: React.FC<FeederIntelligenceProps> = ({
       {/* 5. PROGRESSIVE DISCLOSURE COLLAPSIBLE SECTIONS */}
       <div className="space-y-1">
         <div className="text-xs uppercase font-bold text-slate-400 tracking-widest-sm mb-3">
-          Deep Technical Telemetry (Click to Expand)
+          Additional Detail (Click to Expand)
         </div>
 
         {/* 1. Why this matters */}
         <CollapsibleSection
           title="WHY THIS MATTERS"
-          subtitle="Impact of thermal line overload on distribution transformer lifespan and customer continuity"
+          subtitle="What sustained overload risk means for feeder-level thermal reliability"
           isOpen={openSection === 'why_matters'}
           onToggle={() => toggleSection('why_matters')}
         >
           <div className="p-5 bg-slate-50 border border-slate-200/70 rounded-xl text-sm sm:text-[15px] text-slate-700 leading-relaxed space-y-3">
             <p>
-              Operating above 100 MW initiates cumulative thermal annealing of aluminum conductor steel-reinforced (ACSR) lines, accelerating line sag by 300% and risking ground fault contact.
+              Feeder {feeder.id} ({feeder.name}) is one of the 10 synthetic Delhi-area ML feeders (F01-F10) allocated
+              from the real national demand forecast. Its capacity, load, and voltage are simulated -- not real
+              utility measurements.
             </p>
             <p>
-              If unmitigated, Substation Alpha’s SEL-751 protective overcurrent relay will trigger an automatic lockout at +48 minutes, cutting service to 14,200 commercial and residential meters.
+              Sustained operation above the feeder's rated capacity would, on a real distribution feeder, risk
+              accelerated thermal wear and possible protective relay lockout. No specific relay model, meter count,
+              or asset rating is claimed here because that physical asset data isn't available.
             </p>
           </div>
         </CollapsibleSection>
 
-        {/* 2. Feeder Telemetry */}
+        {/* 2. Feeder Telemetry -- only real backend fields, no fabricated sensors */}
         <CollapsibleSection
-          title="FEEDER TELEMETRY & SENSORS"
-          subtitle="Real-time electrical parameters, phase balance, and conductor thermal estimates"
+          title="FEEDER DATA"
+          subtitle="Real values from the current ML response"
           isOpen={openSection === 'telemetry'}
           onToggle={() => toggleSection('telemetry')}
         >
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-1">
             <div className="p-4 bg-slate-50 border border-slate-200/70 rounded-xl">
-              <span className="text-slate-400 text-xs uppercase font-bold tracking-wider block">Bus Voltage</span>
-              <span className="text-2xl font-bold text-slate-900 font-display mt-1 block">{feeder.voltageKv} kV</span>
-              <span className="text-xs text-slate-500 mt-0.5 block">Nominal 11.00 kV (-1.6%)</span>
+              <span className="text-slate-400 text-xs uppercase font-bold tracking-wider block">Voltage</span>
+              <span className="text-2xl font-bold text-slate-900 font-display mt-1 block">{feeder.voltagePu.toFixed(3)} pu</span>
+              <span className="text-xs text-slate-500 mt-0.5 block">Per-unit value, not a kV class</span>
             </div>
 
             <div className="p-4 bg-slate-50 border border-slate-200/70 rounded-xl">
-              <span className="text-slate-400 text-xs uppercase font-bold tracking-wider block">Reactive Power</span>
-              <span className="text-2xl font-bold text-slate-900 font-display mt-1 block">14.2 MVAR</span>
-              <span className="text-xs text-slate-500 mt-0.5 block">Inductive industrial load</span>
+              <span className="text-slate-400 text-xs uppercase font-bold tracking-wider block">Risk Source</span>
+              <span className="text-lg font-bold text-slate-900 font-display mt-1 block">
+                {riskSource === 'ml_stress_engine' ? 'ML Stress Engine' : riskSource === 'legacy_formula' ? 'Legacy Formula' : 'n/a'}
+              </span>
+              <span className="text-xs text-slate-500 mt-0.5 block">Risk evaluation source</span>
             </div>
 
             <div className="p-4 bg-slate-50 border border-slate-200/70 rounded-xl">
-              <span className="text-slate-400 text-xs uppercase font-bold tracking-wider block">Power Factor</span>
-              <span className="text-2xl font-bold text-slate-900 font-display mt-1 block">0.94 Lag</span>
-              <span className="text-xs text-slate-500 mt-0.5 block">Within IEEE 519 target</span>
+              <span className="text-slate-400 text-xs uppercase font-bold tracking-wider block">Forecast Scope</span>
+              <span className="text-lg font-bold text-slate-900 font-display mt-1 block">{forecastMeta.scope ?? 'n/a'}</span>
+              <span className="text-xs text-slate-500 mt-0.5 block">'feeder' = own allocation</span>
             </div>
 
             <div className="p-4 bg-slate-50 border border-slate-200/70 rounded-xl">
-              <span className="text-slate-400 text-xs uppercase font-bold tracking-wider block">Conductor Temp</span>
-              <span className="text-2xl font-bold text-amber-600 font-display mt-1 block">78 °C</span>
-              <span className="text-xs text-slate-500 mt-0.5 block">Trip setpoint: 90 °C</span>
-            </div>
-          </div>
-        </CollapsibleSection>
-
-        {/* 3. Technical & Substation Details */}
-        <CollapsibleSection
-          title="TECHNICAL & SUBSTATION DETAILS"
-          subtitle="Substation Alpha asset ratings, protection relay curves, and OpenADR links"
-          isOpen={openSection === 'technical'}
-          onToggle={() => toggleSection('technical')}
-        >
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
-            <div className="p-4 bg-slate-50 border border-slate-200/70 rounded-xl space-y-2">
-              <span className="text-sm sm:text-[15px] font-bold text-slate-900 block font-display">Substation Alpha Transformers</span>
-              <div className="text-slate-600 text-xs sm:text-[13px] space-y-1">
-                <div>• Unit T-1: 110/11 kV (120 MVA rated)</div>
-                <div>• On-Load Tap Changer: Step +4</div>
-                <div>• Station Total Output: 242 MW</div>
-              </div>
-            </div>
-
-            <div className="p-4 bg-slate-50 border border-slate-200/70 rounded-xl space-y-2">
-              <span className="text-sm sm:text-[15px] font-bold text-slate-900 block font-display">Protection Relay Configurations</span>
-              <div className="text-slate-600 text-xs sm:text-[13px] space-y-1">
-                <div>• Relay Model: SEL-751 Feeder Relay</div>
-                <div>• Pickup Threshold: 5,200 A (105 MW)</div>
-                <div>• Curve: ANSI Moderately Inverse 51</div>
-              </div>
-            </div>
-
-            <div className="p-4 bg-slate-50 border border-slate-200/70 rounded-xl space-y-2">
-              <span className="text-sm sm:text-[15px] font-bold text-slate-900 block font-display">Communication Links</span>
-              <div className="text-slate-600 text-xs sm:text-[13px] space-y-1">
-                <div>• OpenADR 2.0b: Online & Verified</div>
-                <div>• Substation RTU: Modbus TCP latency 28ms</div>
-                <div>• BESS Unit 2 Gateway: Ready for command</div>
-              </div>
+              <span className="text-slate-400 text-xs uppercase font-bold tracking-wider flex items-center gap-1"><Layers className="w-3 h-3" /> Regime</span>
+              <span className="text-lg font-bold text-slate-900 font-display mt-1 block">{forecastMeta.regimeStatus ?? 'n/a'}</span>
+              <span className="text-xs text-slate-500 mt-0.5 block">{forecastMeta.regimeScore != null ? `score ${forecastMeta.regimeScore.toFixed(2)}` : 'ML regime detector'}</span>
             </div>
           </div>
         </CollapsibleSection>

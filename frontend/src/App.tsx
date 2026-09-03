@@ -20,10 +20,17 @@ export function App() {
     isLoading,
     error,
     isMitigated,
+    mitigatedFeederId,
     applyMitigation,
     resetMitigation,
     reloadFeeders,
   } = useGridState();
+
+  // Data-driven "is there an active overload risk right now" signal for the
+  // header -- not tied to any specific hardcoded feeder id.
+  const hasActiveOverloadRisk = feeders.some(
+    f => f.id !== mitigatedFeederId && (f.riskLevel === 'CRITICAL' || f.riskLevel === 'HIGH')
+  );
 
   const handleNavigateToIntelligence = (feederId: string) => {
     setSelectedFeederId(feederId);
@@ -41,6 +48,7 @@ export function App() {
       activeScenarioId={activeScenarioId}
       onScenarioChange={changeScenario}
       isMitigated={isMitigated}
+      hasActiveOverloadRisk={hasActiveOverloadRisk}
       selectedFeederId={selectedFeederId}
     >
       {isLoading ? (
@@ -76,7 +84,7 @@ export function App() {
               onSelectFeeder={setSelectedFeederId}
               onNavigateToIntelligence={handleNavigateToIntelligence}
               onNavigateToPrevention={handleNavigateToPrevention}
-              isMitigated={isMitigated}
+              mitigatedFeederId={mitigatedFeederId}
             />
           )}
 
@@ -86,15 +94,15 @@ export function App() {
               allFeeders={feeders}
               onSelectFeeder={setSelectedFeederId}
               onNavigateToPrevention={handleNavigateToPrevention}
-              isMitigated={isMitigated}
+              isMitigated={isMitigated && activeFeeder?.id === mitigatedFeederId}
             />
           )}
 
           {activeScreen === 'prevention_center' && (
             <PreventionCenter
               feederId={selectedFeederId}
-              isMitigated={isMitigated}
-              onApplyMitigation={applyMitigation}
+              isMitigated={isMitigated && selectedFeederId === mitigatedFeederId}
+              onApplyMitigation={() => applyMitigation(selectedFeederId)}
               onResetMitigation={resetMitigation}
             />
           )}

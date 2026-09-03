@@ -25,8 +25,14 @@ export const CounterfactualChart: React.FC<CounterfactualChartProps> = ({
     withoutAction: d.forecastLoadMw,
     withGridGuard: d.mitigatedLoadMw ?? d.forecastLoadMw,
     capacity: capacityMw,
-    deltaAvoidedMw: (d.forecastLoadMw - (d.mitigatedLoadMw ?? d.forecastLoadMw)),
+    deltaAvoidedMw: d.forecastLoadMw != null ? d.forecastLoadMw - (d.mitigatedLoadMw ?? d.forecastLoadMw) : null,
   }));
+
+  const withoutActionPeak = Math.max(0, ...data.map(d => d.forecastLoadMw ?? 0));
+  const withGridGuardPeak = Math.max(0, ...data.map(d => d.mitigatedLoadMw ?? d.forecastLoadMw ?? 0));
+  const isSafe = withGridGuardPeak <= capacityMw;
+  const yMax = Math.max(capacityMw, withoutActionPeak) + 10;
+  const yMin = Math.max(0, Math.min(capacityMw, withGridGuardPeak) - 10);
 
   return (
     <div className="w-full flex flex-col space-y-4">
@@ -35,22 +41,26 @@ export const CounterfactualChart: React.FC<CounterfactualChartProps> = ({
         <div className="flex items-center space-x-5">
           <div className="flex items-center space-x-1.5">
             <span className="w-3.5 h-1 bg-red-600 rounded-full inline-block"></span>
-            <span className="text-slate-700 font-bold">Without Action (Peak 108 MW)</span>
+            <span className="text-slate-700 font-bold">Without Action (Peak {withoutActionPeak.toFixed(1)} MW)</span>
           </div>
           <div className="flex items-center space-x-1.5">
             <span className="w-3.5 h-1 bg-emerald-600 rounded-full inline-block"></span>
-            <span className="text-slate-700 font-bold">With GridGuard (94 MW Safe)</span>
+            <span className="text-slate-700 font-bold">With Selected Actions ({withGridGuardPeak.toFixed(1)} MW)</span>
           </div>
           <div className="flex items-center space-x-1.5">
             <span className="w-3.5 border-t-2 border-dashed border-slate-400 inline-block"></span>
-            <span className="text-slate-500 font-semibold">Thermal Rating (100 MW)</span>
+            <span className="text-slate-500 font-semibold">Capacity ({capacityMw.toFixed(1)} MW)</span>
           </div>
         </div>
 
         <div>
-          <span className="px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 font-extrabold text-xs inline-flex items-center space-x-1.5 shadow-2xs">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-            <span>OVERLOAD AVOIDED (+14.0 MW HEADROOM)</span>
+          <span className={`px-3 py-1 rounded-full font-extrabold text-xs inline-flex items-center space-x-1.5 shadow-2xs border ${
+            isSafe
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+              : 'bg-red-50 border-red-200 text-red-700'
+          }`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${isSafe ? 'bg-emerald-600' : 'bg-red-600'}`}></span>
+            <span>{isSafe ? `OVERLOAD AVOIDED (+${(capacityMw - withGridGuardPeak).toFixed(1)} MW HEADROOM)` : `STILL OVER (+${(withGridGuardPeak - capacityMw).toFixed(1)} MW)`}</span>
           </span>
         </div>
       </div>
@@ -67,10 +77,10 @@ export const CounterfactualChart: React.FC<CounterfactualChartProps> = ({
               tickLine={{ stroke: '#cbd5e1' }}
             />
             <YAxis
-              domain={[85, 115]}
+              domain={[yMin, yMax]}
               stroke="#94a3b8"
               tick={{ fill: '#64748b', fontSize: 11, fontWeight: 500 }}
-              tickFormatter={(v) => `${v} MW`}
+              tickFormatter={(v) => `${Math.round(v)} MW`}
               tickLine={{ stroke: '#cbd5e1' }}
             />
             <Tooltip
@@ -90,10 +100,12 @@ export const CounterfactualChart: React.FC<CounterfactualChartProps> = ({
                       <span>With GridGuard:</span>
                       <span className="font-extrabold">{p.withGridGuard} MW</span>
                     </div>
-                    <div className="flex justify-between items-center text-slate-500 pt-1.5 border-t border-slate-100 space-x-3">
-                      <span>Restored Buffer:</span>
-                      <span className="font-extrabold text-emerald-700">+{p.deltaAvoidedMw.toFixed(1)} MW</span>
-                    </div>
+                    {p.deltaAvoidedMw != null && (
+                      <div className="flex justify-between items-center text-slate-500 pt-1.5 border-t border-slate-100 space-x-3">
+                        <span>Restored Buffer:</span>
+                        <span className="font-extrabold text-emerald-700">+{p.deltaAvoidedMw.toFixed(1)} MW</span>
+                      </div>
+                    )}
                   </div>
                 );
               }}
@@ -104,7 +116,7 @@ export const CounterfactualChart: React.FC<CounterfactualChartProps> = ({
               strokeDasharray="4 4"
               strokeWidth={1.5}
               label={{
-                value: `Capacity: ${capacityMw} MW`,
+                value: `Capacity: ${capacityMw.toFixed(1)} MW`,
                 fill: '#dc2626',
                 fontSize: 11,
                 fontWeight: 600,
@@ -112,12 +124,12 @@ export const CounterfactualChart: React.FC<CounterfactualChartProps> = ({
               }}
             />
             <ReferenceLine
-              y={94}
+              y={withGridGuardPeak}
               stroke="#16a34a"
               strokeDasharray="2 2"
               strokeWidth={1}
               label={{
-                value: `Safety Target: 94 MW`,
+                value: `Selected-Action Peak: ${withGridGuardPeak.toFixed(1)} MW`,
                 fill: '#15803d',
                 fontSize: 10,
                 fontWeight: 600,
@@ -149,11 +161,11 @@ export const CounterfactualChart: React.FC<CounterfactualChartProps> = ({
       </div>
 
       {/* Desktop & Tablet: Discrete Side-by-Side Timeline Sequence */}
-      <div className="hidden sm:grid sm:grid-cols-5 gap-2 sm:gap-3">
+      <div className="hidden sm:grid gap-2 sm:gap-3" style={{ gridTemplateColumns: `repeat(auto-fit, minmax(72px, 1fr))` }}>
         {data.map((pt) => {
           const without = pt.forecastLoadMw;
           const withGg = pt.mitigatedLoadMw ?? pt.forecastLoadMw;
-          const isOver = without > capacityMw;
+          const isOver = without != null && without > capacityMw;
           return (
             <div
               key={pt.timeStep}
@@ -163,11 +175,11 @@ export const CounterfactualChart: React.FC<CounterfactualChartProps> = ({
             >
               <div className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">{pt.timeStep}</div>
               <div className="text-sm font-extrabold text-red-600 font-display mt-1">
-                {without} <span className="text-[10px] font-normal text-slate-400">MW</span>
+                {without != null ? without.toFixed(1) : '--'} <span className="text-[10px] font-normal text-slate-400">MW</span>
               </div>
               <div className="text-[10px] text-slate-400 my-0.5">↓ with action</div>
               <div className="text-sm font-extrabold text-emerald-700 font-display">
-                {withGg} <span className="text-[10px] font-normal text-emerald-500">MW</span>
+                {withGg != null ? withGg.toFixed(1) : '--'} <span className="text-[10px] font-normal text-emerald-500">MW</span>
               </div>
             </div>
           );
@@ -178,14 +190,14 @@ export const CounterfactualChart: React.FC<CounterfactualChartProps> = ({
       <div className="sm:hidden space-y-2.5 pt-1">
         <div className="p-3 rounded-xl bg-red-50/50 border border-red-200/90">
           <div className="text-[10px] uppercase font-bold text-red-700 tracking-wider mb-1.5 flex items-center justify-between">
-            <span>Without GridGuard</span>
-            <span className="text-red-600 font-mono">108 MW Peak</span>
+            <span>Without Action</span>
+            <span className="text-red-600 font-mono">{withoutActionPeak.toFixed(1)} MW Peak</span>
           </div>
           <div className="flex items-center justify-between text-xs font-bold text-red-600 font-display">
             {data.map(pt => (
               <div key={pt.timeStep} className="text-center">
                 <span className="text-[10px] text-slate-400 block font-normal">{pt.timeStep}</span>
-                <span>{pt.forecastLoadMw}</span>
+                <span>{pt.forecastLoadMw != null ? pt.forecastLoadMw.toFixed(1) : '--'}</span>
               </div>
             ))}
           </div>
@@ -193,14 +205,14 @@ export const CounterfactualChart: React.FC<CounterfactualChartProps> = ({
 
         <div className="p-3 rounded-xl bg-emerald-50/60 border border-emerald-200/90">
           <div className="text-[10px] uppercase font-bold text-emerald-800 tracking-wider mb-1.5 flex items-center justify-between">
-            <span>With GridGuard</span>
-            <span className="text-emerald-700 font-mono">94 MW Safe</span>
+            <span>With Selected Actions</span>
+            <span className="text-emerald-700 font-mono">{withGridGuardPeak.toFixed(1)} MW {isSafe ? 'Safe' : ''}</span>
           </div>
           <div className="flex items-center justify-between text-xs font-bold text-emerald-700 font-display">
             {data.map(pt => (
               <div key={pt.timeStep} className="text-center">
                 <span className="text-[10px] text-slate-400 block font-normal">{pt.timeStep}</span>
-                <span>{pt.mitigatedLoadMw ?? pt.forecastLoadMw}</span>
+                <span>{(pt.mitigatedLoadMw ?? pt.forecastLoadMw) != null ? (pt.mitigatedLoadMw ?? pt.forecastLoadMw)!.toFixed(1) : '--'}</span>
               </div>
             ))}
           </div>

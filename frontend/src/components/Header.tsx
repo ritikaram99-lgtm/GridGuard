@@ -10,6 +10,7 @@ interface HeaderProps {
   activeScenarioId: ScenarioId;
   onScenarioChange: (id: ScenarioId) => void;
   isMitigated: boolean;
+  hasActiveOverloadRisk: boolean;
   selectedFeederId: string;
   onOpenCopilot: () => void;
 }
@@ -20,17 +21,17 @@ export const Header: React.FC<HeaderProps> = ({
   activeScenarioId,
   onScenarioChange,
   isMitigated,
-  selectedFeederId,
+  hasActiveOverloadRisk,
   onOpenCopilot,
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navItems: { id: ScreenTab; label: string; hasWarning?: boolean }[] = [
     { id: 'command_center', label: 'Overview' },
-    { 
-      id: 'feeder_intelligence', 
-      label: 'Feeder Intelligence', 
-      hasWarning: selectedFeederId === 'F07' && !isMitigated 
+    {
+      id: 'feeder_intelligence',
+      label: 'Feeder Intelligence',
+      hasWarning: hasActiveOverloadRisk && !isMitigated
     },
     { id: 'prevention_center', label: 'Prevention' },
     { id: 'what_if_simulator', label: 'What-If' },
@@ -101,11 +102,17 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="hidden sm:inline">Nominal (Mitigated)</span>
               <span className="sm:hidden font-bold">Safe</span>
             </div>
-          ) : (
+          ) : hasActiveOverloadRisk ? (
             <div className="flex items-center space-x-1.5 px-2 sm:px-2.5 py-1 rounded-full bg-red-50 border border-red-200 text-red-700 text-xs font-semibold">
               <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse"></span>
-              <span className="hidden sm:inline">1 Overload Risk (F07)</span>
-              <span className="sm:hidden font-bold">F07 Risk</span>
+              <span className="hidden sm:inline">Overload Risk Detected</span>
+              <span className="sm:hidden font-bold">Risk</span>
+            </div>
+          ) : (
+            <div className="flex items-center space-x-1.5 px-2 sm:px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+              <span className="hidden sm:inline">Nominal</span>
+              <span className="sm:hidden font-bold">Nominal</span>
             </div>
           )}
 
@@ -209,10 +216,15 @@ export const Header: React.FC<HeaderProps> = ({
                     <ShieldCheck className="w-3.5 h-3.5" />
                     <span>Nominal / Mitigated</span>
                   </span>
-                ) : (
+                ) : hasActiveOverloadRisk ? (
                   <span className="text-red-700 font-bold flex items-center space-x-1">
                     <AlertCircle className="w-3.5 h-3.5" />
-                    <span>Feeder F07 Overload Risk</span>
+                    <span>Overload Risk Detected</span>
+                  </span>
+                ) : (
+                  <span className="text-emerald-700 font-bold flex items-center space-x-1">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>Nominal</span>
                   </span>
                 )}
               </div>

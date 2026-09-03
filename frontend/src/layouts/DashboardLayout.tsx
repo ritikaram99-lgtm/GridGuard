@@ -11,6 +11,7 @@ interface DashboardLayoutProps {
   activeScenarioId: ScenarioId;
   onScenarioChange: (id: ScenarioId) => void;
   isMitigated: boolean;
+  hasActiveOverloadRisk: boolean;
   selectedFeederId: string;
   children: React.ReactNode;
 }
@@ -21,6 +22,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   activeScenarioId,
   onScenarioChange,
   isMitigated,
+  hasActiveOverloadRisk,
   selectedFeederId,
   children,
 }) => {
@@ -34,6 +36,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         activeScenarioId={activeScenarioId}
         onScenarioChange={onScenarioChange}
         isMitigated={isMitigated}
+        hasActiveOverloadRisk={hasActiveOverloadRisk}
         selectedFeederId={selectedFeederId}
         onOpenCopilot={() => setIsCopilotOpen(true)}
       />

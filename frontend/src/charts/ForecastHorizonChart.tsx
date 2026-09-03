@@ -16,6 +16,8 @@ interface ForecastHorizonChartProps {
   capacityMw?: number;
   showMitigated?: boolean;
   highlightBreach?: boolean;
+  /** Real ML Stress Engine time-to-overload (hour-resolution estimate). */
+  timeToOverloadHours?: number | null;
 }
 
 export const ForecastHorizonChart: React.FC<ForecastHorizonChartProps> = ({
@@ -23,6 +25,7 @@ export const ForecastHorizonChart: React.FC<ForecastHorizonChartProps> = ({
   capacityMw = 100,
   showMitigated = false,
   highlightBreach = true,
+  timeToOverloadHours = null,
 }) => {
   const chartData = data.map(d => ({
     timeStep: d.timeStep,
@@ -30,14 +33,23 @@ export const ForecastHorizonChart: React.FC<ForecastHorizonChartProps> = ({
     forecastLoad: d.forecastLoadMw,
     mitigatedLoad: d.mitigatedLoadMw ?? null,
     capacity: capacityMw,
-    isOverload: d.forecastLoadMw > capacityMw,
+    isOverload: d.forecastLoadMw != null && d.forecastLoadMw > capacityMw,
   }));
 
-  const maxVal = Math.max(capacityMw + 12, ...data.map(d => Math.max(d.forecastLoadMw, d.mitigatedLoadMw || 0)));
-  const minVal = Math.max(0, Math.min(60, ...data.map(d => Math.min(d.forecastLoadMw, d.actualLoadMw || d.forecastLoadMw))) - 10);
+  const forecastValues = data.map(d => d.forecastLoadMw).filter((v): v is number => v != null);
+  const maxVal = forecastValues.length
+    ? Math.max(capacityMw + 12, ...forecastValues, ...data.map(d => d.mitigatedLoadMw ?? 0))
+    : capacityMw + 12;
+  const minVal = forecastValues.length
+    ? Math.max(0, Math.min(60, ...forecastValues) - 10)
+    : 0;
+  const isHourly = data.some(d => d.timestamp != null);
 
   return (
     <div className="w-full flex flex-col">
+      <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-1.5 px-1">
+        {isHourly ? '24-Hour ML Forecast (hourly resolution)' : 'Legacy 15/30/45/60-Minute Forecast'}
+      </div>
       {/* Editorial Chart Legend & Breach Status */}
       <div className="flex flex-wrap items-center justify-between gap-2.5 text-[11px] sm:text-xs text-slate-500 mb-3 px-1">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
@@ -57,12 +69,14 @@ export const ForecastHorizonChart: React.FC<ForecastHorizonChartProps> = ({
           )}
           <span className="flex items-center space-x-1.5">
             <span className="w-3.5 border-t-2 border-dashed border-red-500 inline-block"></span>
-            <span className="text-red-700 font-semibold">Rating ({capacityMw} MW)</span>
+            <span className="text-red-700 font-semibold">Capacity ({capacityMw.toFixed(1)} MW)</span>
           </span>
         </div>
         {highlightBreach && (
           <span className="text-xs px-2.5 py-0.5 rounded-full bg-red-50 border border-red-200 text-red-700 font-bold">
-            Breach in 38 min
+            {timeToOverloadHours != null
+              ? `Est. overload in ~${timeToOverloadHours.toFixed(1)}h`
+              : 'Overload risk elevated'}
           </span>
         )}
       </div>
@@ -81,7 +95,7 @@ export const ForecastHorizonChart: React.FC<ForecastHorizonChartProps> = ({
               domain={[minVal, maxVal]}
               stroke="#94a3b8"
               tick={{ fill: '#64748b', fontSize: 11, fontWeight: 500 }}
-              tickFormatter={(v) => `${v} MW`}
+              tickFormatter={(v) => `${Math.round(v)} MW`}
               tickLine={{ stroke: '#cbd5e1' }}
             />
             <Tooltip
@@ -93,27 +107,31 @@ export const ForecastHorizonChart: React.FC<ForecastHorizonChartProps> = ({
                     <div className="font-bold text-slate-900 border-b border-slate-100 pb-1 mb-1.5 font-display">
                       Horizon: {label}
                     </div>
-                    {p.actualLoad !== null && (
+                    {p.actualLoad != null && (
                       <div className="flex justify-between items-center text-slate-700 mb-1 space-x-3">
                         <span>Actual Demand:</span>
-                        <span className="font-bold">{p.actualLoad} MW</span>
+                        <span className="font-bold">{p.actualLoad.toFixed(1)} MW</span>
                       </div>
                     )}
-                    <div className="flex justify-between items-center text-[#073B3A] mb-1 space-x-3">
-                      <span className="font-semibold">Forecast Load:</span>
-                      <span className="font-extrabold">{p.forecastLoad} MW</span>
-                    </div>
-                    {p.mitigatedLoad !== null && (
+                    {p.forecastLoad != null ? (
+                      <div className="flex justify-between items-center text-[#073B3A] mb-1 space-x-3">
+                        <span className="font-semibold">Forecast Load:</span>
+                        <span className="font-extrabold">{p.forecastLoad.toFixed(1)} MW</span>
+                      </div>
+                    ) : (
+                      <div className="text-slate-400 mb-1">No forecast value at this point.</div>
+                    )}
+                    {p.mitigatedLoad != null && (
                       <div className="flex justify-between items-center text-emerald-700 mb-1 space-x-3">
                         <span>Post-Action:</span>
-                        <span className="font-bold">{p.mitigatedLoad} MW</span>
+                        <span className="font-bold">{p.mitigatedLoad.toFixed(1)} MW</span>
                       </div>
                     )}
                     <div className="flex justify-between items-center text-red-600 pt-1 border-t border-slate-100 space-x-3">
-                      <span>Thermal Limit:</span>
-                      <span className="font-bold">{p.capacity} MW</span>
+                      <span>Capacity:</span>
+                      <span className="font-bold">{p.capacity.toFixed(1)} MW</span>
                     </div>
-                    {p.isOverload && (
+                    {p.isOverload && p.forecastLoad != null && (
                       <div className="mt-1.5 px-2 py-0.5 bg-red-50 border border-red-200 rounded-md text-red-700 text-center font-bold text-[11px]">
                         +{(p.forecastLoad - p.capacity).toFixed(1)} MW Overload
                       </div>
@@ -128,7 +146,7 @@ export const ForecastHorizonChart: React.FC<ForecastHorizonChartProps> = ({
               strokeDasharray="4 4"
               strokeWidth={1.5}
               label={{
-                value: `Thermal Limit: ${capacityMw} MW`,
+                value: `Capacity: ${capacityMw.toFixed(1)} MW`,
                 fill: '#dc2626',
                 fontSize: 11,
                 fontWeight: 600,

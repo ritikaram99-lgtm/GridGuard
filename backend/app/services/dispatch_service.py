@@ -23,6 +23,9 @@ from app.services import flexibility_service, forecast_service
 logger = logging.getLogger(__name__)
 
 
+from app.services.ml_adapter_service import is_reserved_ml_feeder_id, ml_adapter_service
+
+
 class DispatchService:
     """Service for handling controlled operator action dispatch simulations."""
 
@@ -36,7 +39,7 @@ class DispatchService:
         return cls._instance
 
     def process_dispatch(self, request: DispatchRequest) -> DispatchResponse:
-        """Execute and validate operator dispatch request.
+        """Execute and validate operator dispatch decision confirmation.
 
         Args:
             request (DispatchRequest): Operator dispatch payload.
@@ -48,6 +51,52 @@ class DispatchService:
             ValueError: If feeder is unknown, actions are empty, action type is invalid, or reduction exceeds max limit.
         """
         fid = request.feeder_id.upper()
+
+        # 1. ML Feeder path (F01-F10) -> Real ML Prevention Engine
+        if is_reserved_ml_feeder_id(fid):
+            if not ml_adapter_service.is_available():
+                raise ValueError("ML adapter is not available. Reserved ML feeders (F01-F10) do not fall back to legacy mock data.")
+
+            prev = ml_adapter_service.get_feeder_prevention(fid)
+
+            dispatched_details: list[DispatchedActionDetail] = [
+                DispatchedActionDetail(
+                    action_type=item.action_type.upper(),
+                    reduction_mw=round(item.reduction_mw, 2),
+                    status="CONFIRMED",
+                )
+                for item in request.actions
+            ]
+
+            cap = float(ml_adapter_service._capacities.loc[fid, "capacity_mw"]) if ml_adapter_service.is_available() else 100.0
+            tot_red = sum(d.reduction_mw for d in dispatched_details)
+
+            # Record dispatched actions in PostgreSQL database (non-blocking)
+            try:
+                record_dispatched_actions(fid, dispatched_details)
+            except Exception as err:
+                logger.warning(f"Failed to persist dispatched actions to database: {err}")
+
+            return DispatchResponse(
+                feeder_id=fid,
+                origin_timestamp=prev.get("origin_timestamp"),
+                status="DECISION_CONFIRMED",
+                forecast_peak=prev["baseline_load_mw"],
+                capacity=cap,
+                total_reduction=round(tot_red, 2),
+                simulated_load=prev["projected_load_mw"],
+                overload_avoided=prev.get("overload_avoided", False),
+                actions=dispatched_details,
+                baseline_risk=prev.get("baseline_risk"),
+                final_risk=prev.get("projected_risk"),
+                baseline_stress_score=prev.get("baseline_stress_score"),
+                final_stress_score=prev.get("projected_stress_score"),
+                prevention_status=prev.get("prevention_status"),
+                disclaimer="GridGuard AI decision-support simulation only -- does not control physical grid hardware or external utility infrastructure.",
+                source="ml_prevention_engine",
+            )
+
+        # 2. Legacy feeder path (e.g. F12)
         feeder = get_feeder_by_id(fid)
         if not feeder:
             raise ValueError(f"Feeder '{request.feeder_id}' not found.")
@@ -112,6 +161,7 @@ class DispatchService:
             simulated_load=simulated_load,
             overload_avoided=overload_avoided,
             actions=dispatched_details,
+            source="legacy_dispatch",
         )
 
 

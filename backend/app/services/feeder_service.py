@@ -56,41 +56,57 @@ def _feeder_response_from_ml_snapshot(snapshot: dict) -> FeederResponse:
     )
 
 
-def get_all_feeders() -> list[FeederResponse]:
+def get_all_feeders(origin: Optional[str] = None) -> list[FeederResponse]:
     """Retrieve all available grid feeders: the real ML pipeline's 10
     synthetic feeders (F01-F10) when the ML adapter is available, PLUS the
     one legacy mock feeder (F12). If the ML adapter is unavailable, F01-F10
     are simply absent from the list (never backfilled with mock data of the
     same id -- see module docstring).
 
+    Args:
+        origin (Optional[str]): Optional ISO forecast-origin timestamp,
+            forwarded to the ML pipeline for F01-F10 (defaults to the latest
+            valid origin). Ignored for legacy feeders.
+
     Returns:
         list[FeederResponse]: List of feeder models.
+
+    Raises:
+        ValueError: `origin` was given but is invalid/out-of-range.
     """
     feeders: list[FeederResponse] = []
     if ml_adapter_service.is_available():
         try:
-            snapshots = ml_adapter_service.get_all_feeders_forecast()
+            snapshots = ml_adapter_service.get_all_feeders_forecast(origin)
             feeders.extend(_feeder_response_from_ml_snapshot(s) for s in snapshots)
-        except ValueError as err:
-            logger.warning(f"ML feeder allocation unavailable, F01-F10 omitted from feeder list: {err}")
+        except ValueError:
+            if origin is not None:
+                raise  # explicit bad origin: let the caller/route surface this as an error
+            logger.warning("ML feeder allocation unavailable, F01-F10 omitted from feeder list.")
     feeders.extend(FeederResponse(**data) for data in MOCK_FEEDERS.values())
     return feeders
 
 
-def get_feeder_by_id(feeder_id: str) -> Optional[FeederResponse]:
+def get_feeder_by_id(feeder_id: str, origin: Optional[str] = None) -> Optional[FeederResponse]:
     """Retrieve a specific grid feeder by its unique identifier.
 
     F01-F10 are ALWAYS answered by the real ML feeder allocation, never by
     mock data of the same id (see module docstring) -- if the ML adapter is
-    unavailable or fails to evaluate the feeder, this returns None (honest
-    "not found") rather than silently substituting legacy mock data.
-    Any other feeder id (e.g. legacy 'F12') is served from MOCK_FEEDERS.
+    unavailable, this returns None (honest "not found") rather than silently
+    substituting legacy mock data. Any other feeder id (e.g. legacy 'F12') is
+    served from MOCK_FEEDERS.
 
     Args:
         feeder_id (str): Feeder identifier (e.g., 'F07').
+        origin (Optional[str]): Optional ISO forecast-origin timestamp,
+            forwarded to the ML pipeline for F01-F10 (defaults to the latest
+            valid origin). Ignored for legacy feeders.
 
     Returns:
         Optional[FeederResponse]: The feeder model if found, otherwise None.
+
+    Raises:
+        ValueError: `origin` was given but is invalid/out-of-range for this feeder.
     """
     fid = feeder_id.upper()
     if is_reserved_ml_feeder_id(fid):
@@ -98,11 +114,13 @@ def get_feeder_by_id(feeder_id: str) -> Optional[FeederResponse]:
             logger.warning(f"ML adapter unavailable; reserved ML feeder '{fid}' has no mock fallback identity.")
             return None
         try:
-            snapshot = ml_adapter_service.get_feeder_forecast(fid)
-            return _feeder_response_from_ml_snapshot(snapshot)
-        except ValueError as err:
-            logger.warning(f"ML feeder allocation failed for reserved id '{fid}': {err}")
+            snapshot = ml_adapter_service.get_feeder_forecast(fid, origin)
+        except ValueError:
+            if origin is not None:
+                raise  # explicit bad origin: let the caller/route surface this as an error
+            logger.warning(f"ML feeder allocation failed for reserved id '{fid}'.")
             return None
+        return _feeder_response_from_ml_snapshot(snapshot)
 
     data = MOCK_FEEDERS.get(fid)
     if not data:

@@ -107,6 +107,16 @@ class MLAdapterService:
         self._feeder_by_id: Dict[str, Dict[str, Any]] = {}
         self._feeder_ids: List[str] = []
         self._capacities: Optional[pd.DataFrame] = None
+        # Pure memoization cache, keyed by origin timestamp: _compute_national()
+        # is a deterministic function of (origin, fixed models/data), so
+        # caching returns byte-identical results -- no numerical value is
+        # changed, only the redundant recomputation is avoided. This exists
+        # because a single feeder's /intelligence page load previously
+        # triggered it independently via forecast_service AND risk_service
+        # (and again per feeder across a feeder list), making full-page loads
+        # take 30-50s. Unbounded by design: the valid origin range is finite
+        # and the service is a long-lived singleton.
+        self._national_cache: Dict[pd.Timestamp, Dict[str, Any]] = {}
         self._load()
 
     @classmethod
@@ -128,6 +138,9 @@ class MLAdapterService:
             import rolling_integration as ri
             import feeder_generator as fg
             import stress_engine as se
+            import action_engine as ae
+            import simulation_engine as sim
+            import prevention_engine as pe
 
             logger.info("ML adapter: loading real ML pipeline (24 direct hourly XGBoost models + regime detector)...")
 
@@ -166,6 +179,9 @@ class MLAdapterService:
             self._ri = ri
             self._fg = fg
             self._se = se
+            self._ae = ae
+            self._sim = sim
+            self._pe = pe
             self._feeders = feeders
             self._feeder_by_id = {f["id"]: f for f in feeders}
             self._feeder_ids = [f["id"] for f in feeders]
@@ -232,6 +248,20 @@ class MLAdapterService:
         return origin
 
     def _compute_national(self, origin: pd.Timestamp) -> Dict[str, Any]:
+        """Cached wrapper around _compute_national_uncached: same origin
+        always yields the same real result (deterministic given fixed models/
+        data), so repeat calls for one origin -- which happen constantly,
+        since forecast_service and risk_service each independently trigger
+        this for the same feeder/origin -- are served from cache instead of
+        rerunning XGBoost inference. Returns the exact same values either way."""
+        cached = self._national_cache.get(origin)
+        if cached is not None:
+            return cached
+        result = self._compute_national_uncached(origin)
+        self._national_cache[origin] = result
+        return result
+
+    def _compute_national_uncached(self, origin: pd.Timestamp) -> Dict[str, Any]:
         """Core, real, genuine 24-hour NATIONAL forecast computation (regime-
         aware, bias-corrected direct XGBoost, or previous-day fallback) --
         computed via direct calls into rolling_integration.py's existing,
@@ -430,6 +460,140 @@ class MLAdapterService:
         nat = self._compute_national(origin)
         feeder_traj_df = self._build_feeder_trajectory_df(origin, nat)
         return [self._feeder_snapshot(fid, origin, nat, feeder_traj_df) for fid in self._feeder_ids]
+
+    def get_feeder_recommendation(self, feeder_id: str, origin_datetime: Optional[str] = None) -> Dict[str, Any]:
+        """Runs the real ML Action Engine (ml/src/action_engine.py) for one
+        reserved ML feeder (F01-F10) at the requested forecast origin.
+        Evaluates real candidate interventions against the feeder's 25-point
+        allocated trajectory and returns the complete decision output.
+        SYNTHETIC flexible resources and capacity -- see FEEDER_SYNTHETIC_WARNING.
+        Raises ValueError if unavailable, origin is invalid, or feeder_id is not F01-F10."""
+        fid = feeder_id.upper()
+        if not self.is_ml_feeder(fid):
+            raise ValueError(f"'{feeder_id}' is not one of the 10 ML feeders ({self._feeder_ids}).")
+        origin = self._resolve_origin(origin_datetime)
+        nat = self._compute_national(origin)
+        feeder_traj_df = self._build_feeder_trajectory_df(origin, nat)
+        
+        traj = feeder_traj_df[fid]
+        cap = float(self._capacities.loc[fid, "capacity_mw"])
+        feeder_def = self._feeder_by_id[fid]
+        
+        scenario = self._ae.FeederScenario(
+            feeder_id=fid,
+            feeder_type=feeder_def["type"],
+            capacity_mw=cap,
+            trajectory=traj,
+        )
+        rec = self._ae.recommend_action(scenario)
+        rec["origin_timestamp"] = str(origin)
+        rec["forecast_method"] = nat["forecast_method"]
+        rec["regime_status"] = nat["regime_status"]
+        rec["source"] = "ml_action_engine"
+        return rec
+
+    def get_feeder_simulation(self, feeder_id: str, origin_datetime: Optional[str] = None,
+                              changes: Optional[Dict[str, Any]] = None,
+                              proposed_actions: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+        """Runs the real ML Simulation Engine (ml/src/simulation_engine.py) for one
+        reserved ML feeder (F01-F10) at the requested forecast origin.
+        Evaluates baseline forecast, scenario adjustments (temperature, EV surge %, solar drop %),
+        and optional candidate interventions against the feeder's 25-point allocated trajectory.
+        Raises ValueError if unavailable, origin is invalid, or feeder_id is not F01-F10."""
+        fid = feeder_id.upper()
+        if not self.is_ml_feeder(fid):
+            raise ValueError(f"'{feeder_id}' is not one of the 10 ML feeders ({self._feeder_ids}).")
+
+        origin = self._resolve_origin(origin_datetime)
+        nat = self._compute_national(origin)
+        feeder_traj_df = self._build_feeder_trajectory_df(origin, nat)
+
+        traj = feeder_traj_df[fid]
+        cap = float(self._capacities.loc[fid, "capacity_mw"])
+        feeder_def = self._feeder_by_id[fid]
+        ftype = feeder_def["type"]
+
+        temp_c = None
+        ev_surge_pct = 0.0
+        solar_drop_pct = 0.0
+        actions = list(proposed_actions) if proposed_actions is not None else []
+
+        if changes:
+            if "ambient_temperature_c" in changes and changes["ambient_temperature_c"] is not None:
+                temp_c = float(changes["ambient_temperature_c"])
+            elif "temperature" in changes and changes["temperature"] is not None and float(changes["temperature"]) != 0.0:
+                val = float(changes["temperature"])
+                temp_c = val if val > 15.0 else 27.0 + val
+
+            if "ev_surge_pct" in changes and changes["ev_surge_pct"] is not None:
+                ev_surge_pct = float(changes["ev_surge_pct"])
+            elif "ev_demand_percent" in changes and changes["ev_demand_percent"] is not None and float(changes["ev_demand_percent"]) > 100.0:
+                ev_surge_pct = float(changes["ev_demand_percent"]) - 100.0
+
+            if "solar_drop_pct" in changes and changes["solar_drop_pct"] is not None:
+                solar_drop_pct = float(changes["solar_drop_pct"])
+            elif "solar_drop_percent" in changes and changes["solar_drop_percent"] is not None:
+                solar_drop_pct = float(changes["solar_drop_percent"])
+
+            if not actions:
+                ev_mw = float(changes.get("ev_shift", changes.get("ev", 0.0)))
+                batt_mw = float(changes.get("battery", 0.0))
+                ind_mw = float(changes.get("industrial", 0.0))
+
+                if ev_mw > 0:
+                    actions.append({"resource": "EV", "mw": ev_mw, "duration_hours": 4.0})
+                if batt_mw > 0:
+                    actions.append({"resource": "BATTERY", "mw": batt_mw, "duration_hours": 3.5})
+                if ind_mw > 0:
+                    actions.append({"resource": "INDUSTRIAL", "mw": ind_mw, "duration_hours": 6.0})
+
+        sim_res = self._sim.simulate_scenario(
+            feeder_id=fid,
+            feeder_type=ftype,
+            capacity_mw=cap,
+            baseline_trajectory=traj,
+            ambient_temperature_c=temp_c,
+            ev_surge_pct=ev_surge_pct,
+            solar_drop_pct=solar_drop_pct,
+            proposed_actions=actions if len(actions) > 0 else None,
+        )
+
+        sim_res["origin_timestamp"] = str(origin)
+        sim_res["forecast_method"] = nat["forecast_method"]
+        sim_res["regime_status"] = nat["regime_status"]
+        sim_res["source"] = "ml_simulation_engine"
+        return sim_res
+
+    def get_feeder_prevention(self, feeder_id: str, origin_datetime: Optional[str] = None) -> Dict[str, Any]:
+        """Runs the real ML Prevention Engine (ml/src/prevention_engine.py) for one
+        reserved ML feeder (F01-F10) at the requested forecast origin.
+        Orchestrates Action Engine candidate generation and Simulation Engine verification
+        to select the optimal validated intervention.
+        Raises ValueError if unavailable, origin is invalid, or feeder_id is not F01-F10."""
+        fid = feeder_id.upper()
+        if not self.is_ml_feeder(fid):
+            raise ValueError(f"'{feeder_id}' is not one of the 10 ML feeders ({self._feeder_ids}).")
+
+        origin = self._resolve_origin(origin_datetime)
+        nat = self._compute_national(origin)
+        feeder_traj_df = self._build_feeder_trajectory_df(origin, nat)
+
+        traj = feeder_traj_df[fid]
+        cap = float(self._capacities.loc[fid, "capacity_mw"])
+        feeder_def = self._feeder_by_id[fid]
+
+        prev = self._pe.recommend_prevention(
+            feeder_id=fid,
+            feeder_type=feeder_def["type"],
+            capacity_mw=cap,
+            trajectory=traj,
+        )
+
+        prev["origin_timestamp"] = str(origin)
+        prev["forecast_method"] = nat["forecast_method"]
+        prev["regime_status"] = nat["regime_status"]
+        prev["source"] = "ml_prevention_engine"
+        return prev
 
 
 ml_adapter_service = MLAdapterService.get_instance()

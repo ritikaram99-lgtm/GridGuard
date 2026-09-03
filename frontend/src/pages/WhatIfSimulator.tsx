@@ -2,27 +2,23 @@ import React, { useState } from 'react';
 import { useWhatIfSimulator } from '../hooks/useWhatIfSimulator';
 import { ForecastHorizonChart } from '../charts/ForecastHorizonChart';
 import { RiskBadge } from '../components/RiskBadge';
-import { StressScoreGauge } from '../components/StressScoreGauge';
 import { CollapsibleSection } from '../components/CollapsibleSection';
 import { formatTto } from '../utils/formatters';
-import { 
-  RotateCcw, 
-  ArrowRight, 
-  Sliders, 
-  LineChart, 
-  Sparkles,
+import {
+  RotateCcw,
+  ArrowRight,
   Thermometer,
   Zap,
-  Sun
+  Sun,
 } from 'lucide-react';
 
 interface WhatIfSimulatorProps {
-  feederId?: string;
+  feederId: string;
   onNavigateToPrevention: () => void;
 }
 
 export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
-  feederId = 'F07',
+  feederId,
   onNavigateToPrevention,
 }) => {
   const { params, result, isSimulating, updateParam, resetToBaseline, applyPreset } =
@@ -57,7 +53,7 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
           What changes the grid's future?
         </h1>
         <p className="text-sm sm:text-base text-slate-600 max-w-2xl font-normal leading-relaxed pt-1">
-          Simulate how weather volatility, aggressive EV adoption, and solar cloud cover impact Feeder {feederId} capacity margins in real time.
+          Explore counterfactual what-if scenarios for feeder {feederId}.
         </p>
       </div>
 
@@ -212,7 +208,7 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
           </div>
 
           <div className="pt-4 border-t border-slate-100 text-xs text-slate-500">
-            Parameters recompute machine learning sensitivity models dynamically across all time horizons.
+            Scenario adjustments recompute counterfactual risk using the ML Simulation Engine.
           </div>
         </div>
 
